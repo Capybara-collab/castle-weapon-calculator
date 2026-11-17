@@ -1152,9 +1152,27 @@
       }
     }
 
-setMessage("optimalMessage", error.message, "error");
+
+    function calculateOptimalPlan() {
+      clearComparison();
+
+      try {
+        const range = readRange();
+        const comparison = getOptimization(range);
+
+        state.comparison = comparison;
+        state.page = 1;
+
+        $("optimalContent").hidden = false;
+
+        renderPlans();
+
+      } catch (error) {
+        clearComparison();
+        setMessage("optimalMessage", error.message, "error");
       }
     }
+
 
     function renderPlans() {
       if (!state.comparison) return;
