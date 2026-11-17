@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>守城專武強化計算器｜水豚</title>
-  <meta name="description" content="選擇強化區間，自動計算材料需求與逐級明細，並提供最佳材料分配策略。" />
+  <meta name="description" content="選擇強化區間，自動計算材料需求與逐級明細，並提供最佳材料分配策略與水豚補給站。" />
   <style>
     :root{
       --bg-1:#030917;
@@ -808,160 +808,106 @@
       costLabel.textContent = materialType === 'fragment' ? '碎片總需求' : '黑水晶總需求';
       calcDetailBody.innerHTML = rows;
     }
-function findBestRoute() {
-  const currentLevel = Number(document.getElementById('currentLevel').value);
-  const targetLevel = Number(document.getElementById('targetLevel').value);
 
-  const fragments = Number(document.getElementById('ownedFragments').value);
-  const crystals = Number(document.getElementById('ownedCrystals').value);
+    function findBestRoute() {
+      const currentLevel = Number(document.getElementById('currentLevel').value);
+      const targetLevel = Number(document.getElementById('targetLevel').value);
+      let fragments = Number(document.getElementById('ownedFragments').value);
+      let crystals = Number(document.getElementById('ownedCrystals').value);
+      const retainType = getRetainType();
 
-  const retainType = getRetainType();
+      const remainFragments = document.getElementById('remainFragments');
+      const remainCrystals = document.getElementById('remainCrystals');
+      const bestRouteBody = document.getElementById('bestRouteBody');
+      const routeMessage = document.getElementById('routeMessage');
 
-  const remainFragments = document.getElementById('remainFragments');
-  const remainCrystals = document.getElementById('remainCrystals');
-  const bestRouteBody = document.getElementById('bestRouteBody');
-  const routeMessage = document.getElementById('routeMessage');
+      if (targetLevel <= currentLevel) {
+        routeMessage.textContent = '目標等級必須高於目前等級。';
+        routeMessage.classList.add('error');
+        bestRouteBody.innerHTML = '<tr><td colspan="3">尚未計算</td></tr>';
+        remainFragments.textContent = '—';
+        remainCrystals.textContent = '—';
+        return;
+      }
 
-  function error(message) {
-    routeMessage.textContent = message;
-    routeMessage.classList.add('error');
-    bestRouteBody.innerHTML =
-      '<tr><td colspan="3">無法完成計算</td></tr>';
-    remainFragments.textContent = '—';
-    remainCrystals.textContent = '—';
-  }
+      if (fragments < 0 || crystals < 0) {
+        routeMessage.textContent = '材料數量不可為負數。';
+        routeMessage.classList.add('error');
+        bestRouteBody.innerHTML = '<tr><td colspan="3">請重新輸入材料數量</td></tr>';
+        remainFragments.textContent = '—';
+        remainCrystals.textContent = '—';
+        return;
+      }
 
-  if (targetLevel <= currentLevel) {
-    error('目標等級必須高於目前等級。');
-    return;
-  }
+      let rows = '';
+      for (let lv = currentLevel; lv < targetLevel; lv++) {
+        const data = upgradeCosts[lv];
 
-  if (!Number.isInteger(fragments) ||
-      !Number.isInteger(crystals) ||
-      fragments < 0 || crystals < 0) {
-    error('請輸入有效的非負整數材料數量。');
-    return;
-  }
-
-  const levels = [];
-
-  for (let lv = currentLevel; lv < targetLevel; lv++) {
-    if (!upgradeCosts[lv]) {
-      error(`缺少 ${lv} → ${lv + 1} 級的強化費用資料。`);
-      return;
-    }
-
-    levels.push({
-      level: lv,
-      fragment: upgradeCosts[lv].fragment,
-      crystal: upgradeCosts[lv].crystal
-    });
-  }
-
-  // 動態規劃：尋找所有可行的材料分配
-  let dp = new Map();
-
-  dp.set('0,0', {
-    usedFragments: 0,
-    usedCrystals: 0,
-    route: []
-  });
-
-  for (const item of levels) {
-    const nextDP = new Map();
-
-    for (const state of dp.values()) {
-      // 選擇小石頭
-      if (state.usedFragments + item.fragment <= fragments) {
-        const f = state.usedFragments + item.fragment;
-        const c = state.usedCrystals;
-        const key = `${f},${c}`;
-
-        if (!nextDP.has(key)) {
-          nextDP.set(key, {
-            usedFragments: f,
-            usedCrystals: c,
-            route: [...state.route, 'fragment']
-          });
+        if (!data) {
+          routeMessage.textContent = '缺少對應等級的強化費用資料。';
+          routeMessage.classList.add('error');
+          bestRouteBody.innerHTML = rows || '<tr><td colspan="3">資料不足</td></tr>';
+          remainFragments.textContent = '資料不足';
+          remainCrystals.textContent = '資料不足';
+          return;
         }
-      }
 
-      // 選擇黑水晶
-      if (state.usedCrystals + item.crystal <= crystals) {
-        const f = state.usedFragments;
-        const c = state.usedCrystals + item.crystal;
-        const key = `${f},${c}`;
+        const fragNeed = data.fragment;
+        const crystalNeed = data.crystal;
+        let useType = '';
+        let cost = 0;
 
-        if (!nextDP.has(key)) {
-          nextDP.set(key, {
-            usedFragments: f,
-            usedCrystals: c,
-            route: [...state.route, 'crystal']
-          });
+        if (retainType === 'fragment') {
+          if (crystals >= crystalNeed) {
+            crystals -= crystalNeed;
+            useType = '黑水晶';
+            cost = crystalNeed;
+          } else if (fragments >= fragNeed) {
+            fragments -= fragNeed;
+            useType = '小石頭';
+            cost = fragNeed;
+          } else {
+            routeMessage.textContent = `材料不足，無法完成 ${lv} → ${lv + 1} 級升級。`;
+            routeMessage.classList.add('error');
+            bestRouteBody.innerHTML = rows || '<tr><td colspan="3">材料不足</td></tr>';
+            remainFragments.textContent = fragments.toLocaleString();
+            remainCrystals.textContent = crystals.toLocaleString();
+            return;
+          }
+        } else {
+          if (fragments >= fragNeed) {
+            fragments -= fragNeed;
+            useType = '小石頭';
+            cost = fragNeed;
+          } else if (crystals >= crystalNeed) {
+            crystals -= crystalNeed;
+            useType = '黑水晶';
+            cost = crystalNeed;
+          } else {
+            routeMessage.textContent = `材料不足，無法完成 ${lv} → ${lv + 1} 級升級。`;
+            routeMessage.classList.add('error');
+            bestRouteBody.innerHTML = rows || '<tr><td colspan="3">材料不足</td></tr>';
+            remainFragments.textContent = fragments.toLocaleString();
+            remainCrystals.textContent = crystals.toLocaleString();
+            return;
+          }
         }
+
+        rows += `
+          <tr>
+            <td>${lv} → ${lv + 1} 級</td>
+            <td>${useType}</td>
+            <td>${cost.toLocaleString()}</td>
+          </tr>
+        `;
       }
+
+      routeMessage.textContent = `可以達成目標：${currentLevel} 級 → ${targetLevel} 級。已依「${retainType === 'fragment' ? '保留更多小石頭' : '保留更多黑水晶'}」安排材料。`;
+      routeMessage.classList.remove('error');
+      bestRouteBody.innerHTML = rows || '<tr><td colspan="3">尚未計算</td></tr>';
+      remainFragments.textContent = fragments.toLocaleString();
+      remainCrystals.textContent = crystals.toLocaleString();
     }
-
-    dp = nextDP;
-
-    if (dp.size === 0) {
-      error('目前材料不足，無法完成目標等級。');
-      return;
-    }
-  }
-
-  // 根據希望保留的材料，選擇最佳方案
-  let best = null;
-
-  for (const state of dp.values()) {
-    if (!best) {
-      best = state;
-      continue;
-    }
-
-    if (retainType === 'fragment') {
-      if (state.usedFragments < best.usedFragments) {
-        best = state;
-      }
-    } else {
-      if (state.usedCrystals < best.usedCrystals) {
-        best = state;
-      }
-    }
-  }
-
-  const remainingF = fragments - best.usedFragments;
-  const remainingC = crystals - best.usedCrystals;
-
-  let rows = '';
-
-  best.route.forEach((type, index) => {
-    const item = levels[index];
-    const cost = type === 'fragment'
-      ? item.fragment
-      : item.crystal;
-
-    rows += `
-      <tr>
-        <td>${item.level} → ${item.level + 1} 級</td>
-        <td>${type === 'fragment' ? '小石頭' : '黑水晶'}</td>
-        <td>${cost.toLocaleString()}</td>
-      </tr>
-    `;
-  });
-
-  bestRouteBody.innerHTML = rows;
-
-  remainFragments.textContent = remainingF.toLocaleString();
-  remainCrystals.textContent = remainingC.toLocaleString();
-
-  routeMessage.textContent =
-    `最佳方案已找到！成功升級 ${currentLevel} 級 → ${targetLevel} 級，已盡可能保留 ${
-      retainType === 'fragment' ? '小石頭' : '黑水晶'
-    }。`;
-
-  routeMessage.classList.remove('error');
-}
 
     function resetAll() {
       document.getElementById('currentLevel').value = 1;
