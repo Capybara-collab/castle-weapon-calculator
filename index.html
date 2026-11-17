@@ -935,6 +935,7 @@
     }
     
 
+
 function calculateOptimalPlan() {
   const currentLevel = Number(document.getElementById('currentLevel').value);
   const targetLevel = Number(document.getElementById('targetLevel').value);
@@ -968,24 +969,37 @@ function calculateOptimalPlan() {
     });
   }
 
-  // 產生所有可能的材料組合
-  let plans = [{
+  // 使用 Map 儲存方案，避免組合數量暴增
+  let plans = new Map();
+
+  plans.set(0, {
     fragments: 0,
     crystals: 0,
     route: []
-  }];
+  });
 
   for (const item of levels) {
-    const nextPlans = [];
+    const nextPlans = new Map();
 
-    for (const plan of plans) {
-      nextPlans.push({
+    function savePlan(plan) {
+      const oldPlan = nextPlans.get(plan.fragments);
+
+      // 碎片數量相同時，只保留黑水晶消耗較少的方案
+      if (!oldPlan || plan.crystals < oldPlan.crystals) {
+        nextPlans.set(plan.fragments, plan);
+      }
+    }
+
+    for (const plan of plans.values()) {
+      // 使用碎片
+      savePlan({
         fragments: plan.fragments + item.fragment,
         crystals: plan.crystals,
         route: [...plan.route, 'fragment']
       });
 
-      nextPlans.push({
+      // 使用黑水晶
+      savePlan({
         fragments: plan.fragments,
         crystals: plan.crystals + item.crystal,
         route: [...plan.route, 'crystal']
@@ -995,21 +1009,21 @@ function calculateOptimalPlan() {
     plans = nextPlans;
   }
 
-  // 找出未被其他方案全面超越的組合
-  const bestPlans = plans.filter((plan, index) => {
-    return !plans.some((other, otherIndex) =>
-      index !== otherIndex &&
-      other.fragments <= plan.fragments &&
-      other.crystals <= plan.crystals &&
-      (other.fragments < plan.fragments ||
-       other.crystals < plan.crystals)
-    );
-  });
-
-  // 依碎片消耗量排序
-  bestPlans.sort((a, b) =>
-    a.fragments - b.fragments || a.crystals - b.crystals
+  // 依碎片消耗量由少到多排序
+  const sortedPlans = [...plans.values()].sort(
+    (a, b) => a.fragments - b.fragments
   );
+
+  // 找出沒有被其他方案全面超越的組合
+  const bestPlans = [];
+  let minCrystals = Infinity;
+
+  for (const plan of sortedPlans) {
+    if (plan.crystals < minCrystals) {
+      bestPlans.push(plan);
+      minCrystals = plan.crystals;
+    }
+  }
 
   let html = '';
 
@@ -1018,6 +1032,7 @@ function calculateOptimalPlan() {
 
     plan.route.forEach((type, i) => {
       const item = levels[i];
+
       const cost = type === 'fragment'
         ? item.fragment
         : item.crystal;
@@ -1097,6 +1112,13 @@ function calculateOptimalPlan() {
       document.getElementById('remainCrystals').textContent = '—';
       document.getElementById('bestRouteBody').innerHTML = '<tr><td colspan="3">尚未計算</td></tr>';
 
+      document.getElementById('optimalPlansContainer').innerHTML =
+  '<div class="small-note">尚未計算</div>';
+
+const optimalMessage = document.getElementById('optimalMessage');
+optimalMessage.textContent = '請選擇強化等級後，開始比較。';
+optimalMessage.classList.remove('error');
+      
       const routeMessage = document.getElementById('routeMessage');
       routeMessage.textContent = '輸入材料數量後，按下「尋找最佳升級方式」。';
       routeMessage.classList.remove('error');
