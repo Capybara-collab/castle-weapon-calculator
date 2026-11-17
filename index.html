@@ -1410,9 +1410,17 @@ function selectDonateAmount(button) {
   image.alt = `NT$ ${amount} 支持方案付款 QR Code`;
   image.src = source;
 
-  $("donateText").textContent =
-    `支持金額：NT$ ${format(amount)}。付款前請核對收款人與金額。`;
-}
+  
+const thankYouMessages = {
+  30: "感謝你的支持！水豚又有一次洗鍊專武的機會了！",
+  50: "感謝請水豚喝奶茶，今天也要努力更新網站！",
+  100: "感謝你的便當贊助，水豚吃飽才有力氣繼續開發！",
+  200: "感謝大力支持！這份心意讓水豚充滿繼續製作的動力！"
+};
+
+$("donateText").textContent =
+  `支持金額：NT$ ${format(amount)}。${thankYouMessages[amount]}`;
+
     function resetAll() {
       $("currentLevel").value = "1";
       $("targetLevel").value = String(Math.min(5, MAX_LEVEL));
