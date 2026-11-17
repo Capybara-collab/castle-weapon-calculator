@@ -608,6 +608,54 @@
       </div>
     </section>
 
+<section class="section-card">
+  <div class="section-title">整體最佳方案</div>
+
+  <div class="section-desc">
+    自動比較整段升級的所有材料組合，找出不同材料消耗的最佳分配方式。
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-main" onclick="calculateOptimalPlan()">
+      計算整體最佳方案
+    </button>
+  </div>
+
+  <div class="result-mini-grid">
+    <div class="mini-card">
+      <div class="mini-label">最佳方案使用碎片</div>
+      <div class="mini-value" id="optimalFragments">—</div>
+    </div>
+    <div class="mini-card">
+      <div class="mini-label">最佳方案使用黑水晶</div>
+      <div class="mini-value" id="optimalCrystals">—</div>
+    </div>
+  </div>
+
+  <div class="message-bar" id="optimalMessage">
+    請按下計算按鈕，分析目前升級區間。
+  </div>
+
+  <div class="table-title">最佳升級分配明細</div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>升級區間</th>
+          <th>使用材料</th>
+          <th>消耗數量</th>
+        </tr>
+      </thead>
+      <tbody id="optimalRouteBody">
+        <tr>
+          <td colspan="3">尚未計算</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
     <section class="section-card">
       <div class="section-title">計算結果</div>
 
@@ -908,6 +956,121 @@
       remainFragments.textContent = fragments.toLocaleString();
       remainCrystals.textContent = crystals.toLocaleString();
     }
+    
+function calculateOptimalPlan() {
+  const currentLevel = Number(document.getElementById('currentLevel').value);
+  const targetLevel = Number(document.getElementById('targetLevel').value);
+
+  const resultBody = document.getElementById('optimalRouteBody');
+  const message = document.getElementById('optimalMessage');
+
+  const fragmentOutput = document.getElementById('optimalFragments');
+  const crystalOutput = document.getElementById('optimalCrystals');
+
+  if (targetLevel <= currentLevel) {
+    message.textContent = '目標等級必須高於目前等級。';
+    message.classList.add('error');
+    return;
+  }
+
+  // 收集每一級的材料需求
+  const levels = [];
+
+  for (let lv = currentLevel; lv < targetLevel; lv++) {
+    const data = upgradeCosts[lv];
+
+    if (!data) {
+      message.textContent = `缺少 ${lv} → ${lv + 1} 級的材料資料。`;
+      message.classList.add('error');
+      return;
+    }
+
+    levels.push({
+      level: lv,
+      fragment: data.fragment,
+      crystal: data.crystal
+    });
+  }
+
+  // 比較所有可能的材料組合
+  let plans = [{
+    fragments: 0,
+    crystals: 0,
+    route: []
+  }];
+
+  for (const item of levels) {
+    const nextPlans = [];
+
+    for (const plan of plans) {
+      nextPlans.push({
+        fragments: plan.fragments + item.fragment,
+        crystals: plan.crystals,
+        route: [...plan.route, 'fragment']
+      });
+
+      nextPlans.push({
+        fragments: plan.fragments,
+        crystals: plan.crystals + item.crystal,
+        route: [...plan.route, 'crystal']
+      });
+    }
+
+    plans = nextPlans;
+  }
+
+  // 刪除被其他方案全面超越的組合
+  plans = plans.filter((plan, index) => {
+    return !plans.some((other, otherIndex) =>
+      index !== otherIndex &&
+      other.fragments <= plan.fragments &&
+      other.crystals <= plan.crystals &&
+      (other.fragments < plan.fragments ||
+       other.crystals < plan.crystals)
+    );
+  });
+
+  // 找出不被支配的最佳方案
+  plans.sort((a, b) =>
+    a.fragments - b.fragments || a.crystals - b.crystals
+  );
+
+  // 顯示方案選擇結果
+  if (plans.length === 0) {
+    message.textContent = '無法找到最佳方案。';
+    message.classList.add('error');
+    return;
+  }
+
+  const best = plans[0];
+
+  fragmentOutput.textContent = best.fragments.toLocaleString();
+  crystalOutput.textContent = best.crystals.toLocaleString();
+
+  let rows = '';
+
+  best.route.forEach((type, index) => {
+    const item = levels[index];
+    const cost = type === 'fragment'
+      ? item.fragment
+      : item.crystal;
+
+    rows += `
+      <tr>
+        <td>${item.level} → ${item.level + 1} 級</td>
+        <td>${type === 'fragment' ? '小石頭' : '黑水晶'}</td>
+        <td>${cost.toLocaleString()}</td>
+      </tr>
+    `;
+  });
+
+  resultBody.innerHTML = rows;
+
+  message.textContent =
+    `分析完成！共找到 ${plans.length} 種未被其他方案全面超越的組合。以下顯示其中一種方案；其他組合的材料取捨也可供比較。`;
+
+  message.classList.remove('error');
+}
 
     function resetAll() {
       document.getElementById('currentLevel').value = 1;
