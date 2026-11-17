@@ -1152,15 +1152,7 @@
       }
     }
 
-    function calculateOptimalPlan() {
-      clearComparison();
-
-      try {
-        state.comparison = getOptimization(readRange());
-        $("optimalContent").hidden = false;
-        renderPlans();
-      } catch (error) {
-        setMessage("optimalMessage", error.message, "error");
+setMessage("optimalMessage", error.message, "error");
       }
     }
 
