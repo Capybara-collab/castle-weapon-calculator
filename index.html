@@ -1413,28 +1413,6 @@ function selectDonateAmount(button) {
   $("donateText").textContent =
     `支持金額：NT$ ${format(amount)}。付款前請核對收款人與金額。`;
 }
-
-
-      const image = $("donateQr");
-      const source = SITE_CONFIG.donationQr[amount];
-
-      $("qrArea").hidden = false;
-      image.hidden = true;
-      image.removeAttribute("src");
-
-      if (!source) {
-        $("donateText").textContent =
-          `已選擇 NT$ ${format(amount)}。此方案尚未設定付款 QR Code，目前無法透過本頁付款。`;
-        return;
-      }
-
-      image.alt = `NT$ ${amount} 支持方案付款 QR Code`;
-      image.src = source;
-
-      $("donateText").textContent =
-        `支持金額：NT$ ${format(amount)}。付款前請核對收款人與金額。`;
-    }
-
     function resetAll() {
       $("currentLevel").value = "1";
       $("targetLevel").value = String(Math.min(5, MAX_LEVEL));
