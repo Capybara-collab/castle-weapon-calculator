@@ -1368,13 +1368,52 @@ const SITE_CONFIG = {
       $("donateToggle").setAttribute("aria-expanded", String(expanded));
     }
 
-    function selectDonateAmount(button) {
-      const amount = Number(button.dataset.amount);
-      state.donationAmount = amount;
+   
+function selectDonateAmount(button) {
+  const amount = Number(button.dataset.amount);
 
-      document.querySelectorAll(".price").forEach(element => {
-        element.setAttribute("aria-pressed", String(element === button));
-      });
+  // 如果再次點擊相同金額，就收起 QR Code
+  if (state.donationAmount === amount) {
+    state.donationAmount = null;
+
+    document.querySelectorAll(".price").forEach(element => {
+      element.setAttribute("aria-pressed", "false");
+    });
+
+    $("qrArea").hidden = true;
+    $("donateQr").hidden = true;
+    $("donateQr").removeAttribute("src");
+    $("donateText").textContent = "";
+
+    return;
+  }
+
+  state.donationAmount = amount;
+
+  document.querySelectorAll(".price").forEach(element => {
+    element.setAttribute("aria-pressed", String(element === button));
+  });
+
+  const image = $("donateQr");
+  const source = SITE_CONFIG.donationQr[amount];
+
+  $("qrArea").hidden = false;
+  image.hidden = true;
+  image.removeAttribute("src");
+
+  if (!source) {
+    $("donateText").textContent =
+      `已選擇 NT$ ${format(amount)}。此方案尚未設定付款 QR Code，目前無法透過本頁付款。`;
+    return;
+  }
+
+  image.alt = `NT$ ${amount} 支持方案付款 QR Code`;
+  image.src = source;
+
+  $("donateText").textContent =
+    `支持金額：NT$ ${format(amount)}。付款前請核對收款人與金額。`;
+}
+
 
       const image = $("donateQr");
       const source = SITE_CONFIG.donationQr[amount];
