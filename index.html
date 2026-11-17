@@ -608,53 +608,30 @@
       </div>
     </section>
 
+
+
 <section class="section-card">
-  <div class="section-title">整體最佳方案</div>
+  <div class="section-title">整體最佳方案比較</div>
 
   <div class="section-desc">
-    自動比較整段升級的所有材料組合，找出不同材料消耗的最佳分配方式。
+    自動比較所有材料組合，列出沒有被其他方案全面超越的選擇。
   </div>
 
   <div class="btn-row">
     <button class="btn btn-main" onclick="calculateOptimalPlan()">
-      計算整體最佳方案
+      開始比較最佳方案
     </button>
   </div>
 
-  <div class="result-mini-grid">
-    <div class="mini-card">
-      <div class="mini-label">最佳方案使用碎片</div>
-      <div class="mini-value" id="optimalFragments">—</div>
-    </div>
-    <div class="mini-card">
-      <div class="mini-label">最佳方案使用黑水晶</div>
-      <div class="mini-value" id="optimalCrystals">—</div>
-    </div>
-  </div>
-
   <div class="message-bar" id="optimalMessage">
-    請按下計算按鈕，分析目前升級區間。
+    請選擇強化等級後，開始比較。
   </div>
 
-  <div class="table-title">最佳升級分配明細</div>
-
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>升級區間</th>
-          <th>使用材料</th>
-          <th>消耗數量</th>
-        </tr>
-      </thead>
-      <tbody id="optimalRouteBody">
-        <tr>
-          <td colspan="3">尚未計算</td>
-        </tr>
-      </tbody>
-    </table>
+  <div id="optimalPlansContainer">
+    <div class="small-note">尚未計算</div>
   </div>
 </section>
+
 
     <section class="section-card">
       <div class="section-title">計算結果</div>
@@ -957,23 +934,21 @@
       remainCrystals.textContent = crystals.toLocaleString();
     }
     
+
 function calculateOptimalPlan() {
   const currentLevel = Number(document.getElementById('currentLevel').value);
   const targetLevel = Number(document.getElementById('targetLevel').value);
 
-  const resultBody = document.getElementById('optimalRouteBody');
   const message = document.getElementById('optimalMessage');
-
-  const fragmentOutput = document.getElementById('optimalFragments');
-  const crystalOutput = document.getElementById('optimalCrystals');
+  const container = document.getElementById('optimalPlansContainer');
 
   if (targetLevel <= currentLevel) {
     message.textContent = '目標等級必須高於目前等級。';
     message.classList.add('error');
+    container.innerHTML = '';
     return;
   }
 
-  // 收集每一級的材料需求
   const levels = [];
 
   for (let lv = currentLevel; lv < targetLevel; lv++) {
@@ -982,6 +957,7 @@ function calculateOptimalPlan() {
     if (!data) {
       message.textContent = `缺少 ${lv} → ${lv + 1} 級的材料資料。`;
       message.classList.add('error');
+      container.innerHTML = '';
       return;
     }
 
@@ -992,7 +968,7 @@ function calculateOptimalPlan() {
     });
   }
 
-  // 比較所有可能的材料組合
+  // 產生所有可能的材料組合
   let plans = [{
     fragments: 0,
     crystals: 0,
@@ -1019,8 +995,8 @@ function calculateOptimalPlan() {
     plans = nextPlans;
   }
 
-  // 刪除被其他方案全面超越的組合
-  plans = plans.filter((plan, index) => {
+  // 找出未被其他方案全面超越的組合
+  const bestPlans = plans.filter((plan, index) => {
     return !plans.some((other, otherIndex) =>
       index !== otherIndex &&
       other.fragments <= plan.fragments &&
@@ -1030,44 +1006,75 @@ function calculateOptimalPlan() {
     );
   });
 
-  // 找出不被支配的最佳方案
-  plans.sort((a, b) =>
+  // 依碎片消耗量排序
+  bestPlans.sort((a, b) =>
     a.fragments - b.fragments || a.crystals - b.crystals
   );
 
-  // 顯示方案選擇結果
-  if (plans.length === 0) {
-    message.textContent = '無法找到最佳方案。';
-    message.classList.add('error');
-    return;
-  }
+  let html = '';
 
-  const best = plans[0];
+  bestPlans.forEach((plan, index) => {
+    let detailRows = '';
 
-  fragmentOutput.textContent = best.fragments.toLocaleString();
-  crystalOutput.textContent = best.crystals.toLocaleString();
+    plan.route.forEach((type, i) => {
+      const item = levels[i];
+      const cost = type === 'fragment'
+        ? item.fragment
+        : item.crystal;
 
-  let rows = '';
+      detailRows += `
+        <tr>
+          <td>${item.level} → ${item.level + 1} 級</td>
+          <td>${type === 'fragment' ? '小石頭' : '黑水晶'}</td>
+          <td>${cost.toLocaleString()}</td>
+        </tr>
+      `;
+    });
 
-  best.route.forEach((type, index) => {
-    const item = levels[index];
-    const cost = type === 'fragment'
-      ? item.fragment
-      : item.crystal;
+    html += `
+      <div class="mini-card" style="margin-top:14px;">
+        <div class="mini-label">方案 ${index + 1}</div>
 
-    rows += `
-      <tr>
-        <td>${item.level} → ${item.level + 1} 級</td>
-        <td>${type === 'fragment' ? '小石頭' : '黑水晶'}</td>
-        <td>${cost.toLocaleString()}</td>
-      </tr>
+        <div class="result-mini-grid">
+          <div>
+            <div class="mini-label">碎片總消耗</div>
+            <div class="mini-value">
+              ${plan.fragments.toLocaleString()}
+            </div>
+          </div>
+
+          <div>
+            <div class="mini-label">黑水晶總消耗</div>
+            <div class="mini-value">
+              ${plan.crystals.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        <div class="table-title">逐級使用明細</div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>升級區間</th>
+                <th>使用材料</th>
+                <th>消耗數量</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${detailRows}
+            </tbody>
+          </table>
+        </div>
+      </div>
     `;
   });
 
-  resultBody.innerHTML = rows;
+  container.innerHTML = html;
 
   message.textContent =
-    `分析完成！共找到 ${plans.length} 種未被其他方案全面超越的組合。以下顯示其中一種方案；其他組合的材料取捨也可供比較。`;
+    `比較完成！共找到 ${bestPlans.length} 種未被其他方案全面超越的組合。`;
 
   message.classList.remove('error');
 }
