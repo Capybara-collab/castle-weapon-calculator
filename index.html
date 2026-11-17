@@ -1524,12 +1524,15 @@ $("donateText").textContent =
         button.addEventListener("click", () => selectDonateAmount(button));
       });
 
-      $("donateQr").addEventListener("load", () => {
-        if (state.donationAmount !== null && $("donateQr").getAttribute("src")) {
-          $("donateQr").hidden = false;
-        }
-      });
-
+   $("donateQr").addEventListener("load", () => {
+  if (
+    state.donationAmount !== null &&
+    $("qrArea").hidden === false &&
+    $("donateQr").getAttribute("src")
+  ) {
+    $("donateQr").hidden = false;
+  }
+});
       $("donateQr").addEventListener("error", () => {
         $("donateQr").hidden = true;
 
