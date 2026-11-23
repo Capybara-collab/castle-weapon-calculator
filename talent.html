@@ -718,12 +718,6 @@ for (const id of ["rank", "stage", "paid"]) {
     }
   });
 }
-    render();
-    if (usedEnergy() > totalEnergy()) {
-      notify("目前配置超出總能量；已保留配置，請手動調整。");
-    }
-  });
-}
 
 $("mode").addEventListener("change", () => {
   const before = usedEnergy();
