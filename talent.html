@@ -728,6 +728,14 @@ $("mode").addEventListener("change", () => {
     ? `已切換前置規則，清除不符合條件的天賦並退回 ${refunded} 點。`
     : "已切換前置解鎖規則。");
 });
+  const before = usedEnergy();
+  pruneInvalidTalents();
+  render();
+  const refunded = before - usedEnergy();
+  notify(refunded
+    ? `已切換前置規則，清除不符合條件的天賦並退回 ${refunded} 點。`
+    : "已切換前置解鎖規則。");
+});
 
 $("reset").addEventListener("click", () => {
   if (!confirm("確定清空所有天賦？段位與能量設定會保留。")) return;
