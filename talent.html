@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>守城聯機・天賦模擬器</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0c1422;
+  --panel: #142238;
+  --border: #30425c;
+  --text: #eef3fc;
+  --muted: #a5b3ca;
+  --gold: #f1c65c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Microsoft JhengHei", sans-serif;
+}
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px 12px 40px;
+}
+h1 {
+  text-align: center;
+  font-size: clamp(23px, 5vw, 32px);
+  margin: 10px 0;
+}
+.subtitle {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.panel {
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+.controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+select, input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #415674;
+  background: #223754;
+  color: white;
+  font-size: 16px;
+}
+.wide { grid-column: 1 / -1; }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.stat {
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 4px;
+}
+.stat strong {
+  display: block;
+  color: var(--gold);
+  font-size: 25px;
+}
+.stat span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+button.action {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #526784;
+  background: #263c5c;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+button.danger {
+  background: #65353e;
+  border-color: #88515c;
+}
+.note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+#status {
+  min-height: 24px;
+  margin: 10px 0;
+  color: var(--gold);
+  font-size: 14px;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 5px;
+}
+.tree-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #101b2c;
+}
+#tree {
+  position: relative;
+  width: 800px;
+  height: 1160px;
+  margin: auto;
+}
+#lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.line {
+  fill: none;
+  stroke: #46546a;
+  stroke-width: 4;
+}
+.line.active { stroke: #dba64d; }
+.node {
+  position: absolute;
+  width: 126px;
+  height: 76px;
+  padding: 8px 4px;
+  border: 3px solid var(--type);
+  border-radius: 12px;
+  background: #243047;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: pan-x pan-y;
+  font-family: inherit;
+}
+.node .name {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.node .level {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  color: #c6d1e1;
+}
+.node.locked { opacity: .35; }
+.node.selected {
+  border-color: white;
+  background: #35465f;
+}
+.node.maxed {
+  background: #4b442a;
+  border-color: var(--gold);
+}
+.node.holding { animation: hold .6s linear forwards; }
+@keyframes hold {
+  to {
+    box-shadow: 0 0 0 7px #ef646475;
+    background: #63333e;
+  }
+}
+#selected {
+  margin: 8px 0 0;
+  padding-left: 24px;
+  line-height: 1.9;
+  font-size: 14px;
+}
+.summary {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+@media (max-width: 480px) {
+  .panel { padding: 12px; }
+  .controls { gap: 10px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>守城聯機・天賦模擬器</h1>
+  <div class="subtitle">短按加點 · 長按清空 · 自動儲存</div>
+
+  <section class="panel controls">
+    <label>
+      目前段位
+      <select id="rank"></select>
+    </label>
+    <label>
+      小段位
+      <select id="stage">
+        <option>I</option>
+        <option>II</option>
+        <option>III</option>
+        <option>IV</option>
+        <option>V</option>
+      </select>
+    </label>
+    <label>
+      基本能量（不含真段位與付費加成）
+      <input id="base" type="number" min="0" step="1" value="0">
+    </label>
+    <label>
+      付費能量
+      <select id="paid">
+        <option value="0">未購買（＋0）</option>
+        <option value="10">購買 1 次（＋10）</option>
+        <option value="20">購買 2 次（＋20）</option>
+      </select>
+    </label>
+    <label class="wide">
+      多條前置連線的解鎖方式（模擬設定）
+      <select id="mode">
+        <option value="any">任一前置投入至少 1 點</option>
+        <option value="all">全部前置各投入至少 1 點</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <strong id="used">0</strong>
+      <span>已使用能量</span>
+    </div>
+    <div class="stat">
+      <strong id="count">0</strong>
+      <span>已選天賦</span>
+    </div>
+    <div class="stat">
+      <strong id="remaining">0</strong>
+      <span>剩餘能量</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="toolbar">
+      <button class="action danger" id="reset" type="button">
+        清空所有天賦
+      </button>
+      <button class="action" id="export" type="button">
+        複製配置
+      </button>
+    </div>
+    <div id="energyInfo" class="summary"></div>
+    <p class="note">
+      短按加 1 點；長按 0.6 秒清空並退點。
+      若後續天賦因此失去前置條件，會一併清空。
+      點數上限依提供資料設定；名稱與連線依原圖整理，
+      遊戲實際解鎖條件尚待確認。
+      各段位基本點數尚無公式，請自行輸入基本能量。
+      手機可左右滑動天賦圖。
+    </p>
+  </section>
+
+  <div id="status" role="status" aria-live="polite"></div>
+
+  <div class="legend">
+    <span><i style="background:#f1c65c"></i>一般／成長</span>
+    <span><i style="background:#58b4ee"></i>戰鬥／功能</span>
+    <span><i style="background:#e77965"></i>特殊效果</span>
+    <span><i style="background:#70d2ae"></i>塔／生存</span>
+    <span><i style="background:#a3adba"></i>叢林／功能</span>
+  </div>
+
+  <section class="tree-scroll">
+    <div id="tree">
+      <svg id="lines" viewBox="0 0 800 1160"
+           aria-hidden="true"></svg>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:12px">
+    <strong>已選擇的天賦</strong>
+    <ul id="selected"></ul>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+// 段位名稱依使用者提供的清單。
+const rankNames = [
+  "鐵牌", "青銅", "白銀", "黃金", "白金",
+  "鑽石", "大師", "宗師", "英雄", "超級英雄",
+  "人格", "半神", "泰坦", "天使", "座天使",
+  "智天使", "熾天使", "大天使", "全能者", "黑錘"
+];
+const ranks = [
+  ...rankNames,
+  ...rankNames.map(name => "真：" + name)
+];
+
+const fivePointIds = new Set([
+  "1-3", "2-1", "2-4", "3-1", "4-3", "5-2",
+  "7-1", "7-4", "8-1", "8-2", "9-1", "9-2"
+]);
+
+const colors = {
+  growth: "#f1c65c",
+  battle: "#58b4ee",
+  special: "#e77965",
+  tower: "#70d2ae",
+  jungle: "#a3adba"
+};
+
+// 格式：[編號, 名稱, 橫向位置, 列, 類型, 前置編號]
+// 前置連線為依圖片整理的初版，可在此修改。
+const rawTalents = [
+  ["1-1", "攻擊力 %",        0,   1, "growth",  []],
+  ["1-2", "防禦力",          1,   1, "battle",  []],
+  ["1-3", "冷卻時間 %",      2,   1, "growth",  []],
+  ["1-4", "移動速度（麻藥）",3,   1, "battle",  []],
+  ["1-5", "塔攻速 %",        4,   1, "tower",   []],
+
+  ["2-1", "硬直",            0,   2, "battle",  ["1-1"]],
+  ["2-2", "受擊生命恢復",    1,   2, "battle",  ["1-2"]],
+  ["2-3", "每秒金幣",        2,   2, "growth",  ["1-3"]],
+  ["2-4", "叢林攻擊實幣",    3,   2, "jungle",  ["1-4"]],
+  ["2-5", "塔冷卻時間 %",    4,   2, "tower",   ["1-5"]],
+
+  ["3-1", "毒傷害",          0,   3, "battle",  ["2-1"]],
+  ["3-2", "受擊傷害減少",    1,   3, "growth",  ["2-2"]],
+  ["3-3", "經驗值增加",      2,   3, "growth",  ["2-3"]],
+  ["3-4", "叢林額外道具",    3,   3, "jungle",  ["2-4"]],
+
+  ["4-1", "擊殺時冷卻減少",  .5,  4, "special", ["3-1","3-2"]],
+  ["4-2", "1 點（仇恨）",    1.5, 4, "battle",  ["3-2","3-3"]],
+  ["4-3", "叢林荊棘減傷",    3.5, 4, "jungle",  ["3-4","2-5"]],
+
+  ["5-1", "技能傷害",        0,   5, "special", ["4-1"]],
+  ["5-2", "每 10 秒恢復",    1,   5, "jungle",  ["4-1","4-2"]],
+  ["5-3", "擊殺額外經驗",    2,   5, "battle",  ["4-2"]],
+  ["5-4", "叢林額外實幣",    3.5, 5, "battle",  ["4-3"]],
+
+  ["6-1", "攻擊速度",        0,   6, "special", ["5-1"]],
+  ["6-2", "塔回饋",          1.5, 6, "tower",   ["5-2","5-3"]],
+  ["6-3", "叢林額外經驗",    3,   6, "jungle",  ["5-4"]],
+  ["6-4", "塔生命恢復",      4,   6, "jungle",  ["5-4"]],
+
+  ["7-1", "斬斷",            0,   7, "battle",  ["6-1"]],
+  ["7-2", "閃避",            1,   7, "special", ["6-2"]],
+  ["7-3", "塔攻擊力",        2,   7, "tower",   ["6-2"]],
+  ["7-4", "道具掉落機率增加",3,   7, "jungle",  ["6-3"]],
+  ["7-5", "水晶礦恢復",      4,   7, "jungle",  ["6-4"]],
+
+  ["8-1", "無敵",            .5,  8, "special", ["7-1","7-2"]],
+  ["8-2", "回饋",            2,   8, "growth",  ["7-3"]],
+  ["8-3", "任務增加",        3.5, 8, "jungle",  ["7-4","7-5"]],
+
+  ["9-1", "狂氣",            0,   9, "growth",  ["8-1"]],
+  ["9-2", "復活",            1,   9, "special", ["8-1"]]
+];
+
+const talents = rawTalents.map(([id,name,col,row,type,parents]) => ({
+  id, name, type, parents,
+  max: id === "8-3" ? 3 : fivePointIds.has(id) ? 5 : 10,
+  x: 80 + col * 160,
+  y: 75 + (row - 1) * 125
+}));
+
+const $ = id => document.getElementById(id);
+const storageKey = "castle-talent-builder-v3";
+
+let levels = Object.fromEntries(talents.map(t => [t.id, 0]));
+let statusTimer;
+
+ranks.forEach((name, index) => {
+  const option = document.createElement("option");
+  option.value = index;
+  option.textContent = `${index + 1}. ${name}`;
+  $("rank").appendChild(option);
+});
+
+function baseEnergy() {
+  const n = Number($("base").value);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+}
+
+function trueBonus() {
+  return Number($("rank").value) >= 20 ? 20 : 0;
+}
+
+function totalEnergy() {
+  return baseEnergy() + trueBonus() + Number($("paid").value);
+}
+
+function usedEnergy() {
+  return Object.values(levels).reduce((sum, n) => sum + n, 0);
+}
+
+function unlocked(talent) {
+  if (!talent.parents.length) return true;
+  const checks = talent.parents.map(id => levels[id] > 0);
+  return $("mode").value === "all"
+    ? checks.every(Boolean)
+    : checks.some(Boolean);
+}
+
+function notify(message) {
+  clearTimeout(statusTimer);
+  $("status").textContent = message;
+  statusTimer = setTimeout(() => {
+    $("status").textContent = "";
+  }, 4500);
+}
+
+// 反覆檢查，直到所有失去前置條件的天賦都已清除。
+function pruneInvalidTalents() {
+  let changed;
+  do {
+    changed = false;
+    for (const t of talents) {
+      if (levels[t.id] > 0 && !unlocked(t)) {
+        levels[t.id] = 0;
+        changed = true;
+      }
+    }
+  } while (changed);
+}
+
+function addPoint(t) {
+  if (!unlocked(t)) {
+    notify("請先投入前置天賦。");
+    return;
+  }
+  if (levels[t.id] >= t.max) {
+    notify(`${t.name} 已達 ${t.max} 點上限；長按可清空。`);
+    return;
+  }
+  if (usedEnergy() >= totalEnergy()) {
+    notify("剩餘能量不足，請檢查基本能量與加成設定。");
+    return;
+  }
+
+  levels[t.id]++;
+  render();
+}
+
+function clearTalent(t) {
+  if (!levels[t.id]) {
+    notify(`${t.name} 尚未投入點數。`);
+    return;
+  }
+
+  const before = usedEnergy();
+  levels[t.id] = 0;
+  pruneInvalidTalents();
+
+  render();
+  notify(`已清空「${t.name}」，共退回 ${before - usedEnergy()} 點。`);
+
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+// 長按不觸發短按；滑動、取消、離開按鈕時取消計時。
+function bindPress(button, talent) {
+  let timer = null;
+  let startX = 0;
+  let startY = 0;
+  let pressing = false;
+  let longTriggered = false;
+  let activePointer = null;
+
+  function stop() {
+    clearTimeout(timer);
+    timer = null;
+    pressing = false;
+    activePointer = null;
+    button.classList.remove("holding");
+  }
+
+  button.addEventListener("pointerdown", event => {
+    if (!event.isPrimary || event.button !== 0 || pressing) return;
+
+    pressing = true;
+    longTriggered = false;
+    activePointer = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    button.classList.add("holding");
+
+    timer = setTimeout(() => {
+      if (!pressing) return;
+      longTriggered = true;
+      button.classList.remove("holding");
+      clearTalent(talent);
+    }, 600);
+  });
+
+  button.addEventListener("pointermove", event => {
+    if (!pressing || event.pointerId !== activePointer) return;
+    if (Math.hypot(
+      event.clientX - startX,
+      event.clientY - startY
+    ) > 10) stop();
+  });
+
+  button.addEventListener("pointerup", event => {
+    if (!pressing || event.pointerId !== activePointer) return;
+    const shouldAdd = !longTriggered;
+    stop();
+    if (shouldAdd) addPoint(talent);
+  });
+
+  button.addEventListener("pointercancel", stop);
+  button.addEventListener("pointerleave", stop);
+
+  button.addEventListener("contextmenu", event => {
+    event.preventDefault();
+  });
+
+  // 滑鼠／觸控操作已由 pointer 事件處理，避免再加一次。
+  // 鍵盤 Enter／空白鍵產生的 click 仍可加點。
+  button.addEventListener("click", event => {
+    if (event.detail === 0) addPoint(talent);
+  });
+
+  // 鍵盤 Delete／Backspace 可清空。
+  button.addEventListener("keydown", event => {
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      clearTalent(talent);
+    }
+  });
+
+  window.addEventListener("blur", stop);
+}
+
+const buttons = new Map();
+const lineElements = [];
+
+for (const t of talents) {
+  for (const parentId of t.parents) {
+    const parent = talents.find(item => item.id === parentId);
+    if (!parent) continue;
+
+    const path = document.createElementNS(
+      "http://www.w3.org/2000/svg", "path"
+    );
+    const startY = parent.y + 38;
+    const endY = t.y - 38;
+    const middleY = (startY + endY) / 2;
+
+    path.setAttribute(
+      "d",
+      `M ${parent.x} ${startY}
+       V ${middleY}
+       H ${t.x}
+       V ${endY}`
+    );
+    path.setAttribute("class", "line");
+    $("lines").appendChild(path);
+    lineElements.push({path, parentId});
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "node";
+  button.style.left = `${t.x - 63}px`;
+  button.style.top = `${t.y - 38}px`;
+  button.style.setProperty("--type", colors[t.type]);
+
+  const name = document.createElement("span");
+  name.className = "name";
+  name.textContent = t.name;
+
+  const level = document.createElement("span");
+  level.className = "level";
+
+  button.append(name, level);
+  $("tree").appendChild(button);
+  buttons.set(t.id, button);
+  bindPress(button, t);
+}
+
+function save() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify({
+      rank: $("rank").value,
+      stage: $("stage").value,
+      base: baseEnergy(),
+      paid: $("paid").value,
+      mode: $("mode").value,
+      levels
+    }));
+  } catch {
+    // 部分本機檔案瀏覽器不提供儲存，不影響加點操作。
+  }
+}
+
+function restore() {
+  try {
+    const data = JSON.parse(localStorage.getItem(storageKey));
+    if (!data || typeof data !== "object") return;
+
+    const rank = Number(data.rank);
+    if (Number.isInteger(rank) && rank >= 0 && rank < ranks.length) {
+      $("rank").value = rank;
+    }
+    if (["I","II","III","IV","V"].includes(data.stage)) {
+      $("stage").value = data.stage;
+    }
+    if (Number.isFinite(Number(data.base))) {
+      $("base").value = Math.max(0, Math.floor(Number(data.base)));
+    }
+    if (["0","10","20"].includes(String(data.paid))) {
+      $("paid").value = String(data.paid);
+    }
+    if (["any","all"].includes(data.mode)) {
+      $("mode").value = data.mode;
+    }
+
+    for (const t of talents) {
+      const n = Number(data.levels?.[t.id] ?? 0);
+      levels[t.id] = Number.isFinite(n)
+        ? Math.min(t.max, Math.max(0, Math.floor(n)))
+        : 0;
+    }
+    pruneInvalidTalents();
+  } catch {
+    // 無儲存資料或資料無效時使用預設值。
+  }
+}
+
+function render() {
+  const used = usedEnergy();
+  const remaining = totalEnergy() - used;
+
+  $("used").textContent = used;
+  $("count").textContent =
+    Object.values(levels).filter(n => n > 0).length;
+  $("remaining").textContent = remaining;
+  $("remaining").style.color =
+    remaining < 0 ? "#ff8888" : "var(--gold)";
+
+  $("energyInfo").textContent =
+    `基本 ${baseEnergy()} ＋ 真段位 ${trueBonus()} ＋ ` +
+    `付費 ${Number($("paid").value)} ＝ 總能量 ${totalEnergy()}` +
+    (remaining < 0 ? "（已超額，請清除部分天賦或調整能量）" : "");
+
+  for (const t of talents) {
+    const button = buttons.get(t.id);
+    button.classList.toggle("locked", !unlocked(t));
+    button.classList.toggle("selected", levels[t.id] > 0);
+    button.classList.toggle("maxed", levels[t.id] === t.max);
+    button.querySelector(".level").textContent =
+      `${levels[t.id]} / ${t.max} 點 · ${t.id}`;
+    button.setAttribute(
+      "aria-label",
+      `${t.name}，${levels[t.id]} / ${t.max} 點，` +
+      "短按加點，長按或按 Delete 清空"
+    );
+  }
+
+  for (const line of lineElements) {
+    line.path.classList.toggle("active", levels[line.parentId] > 0);
+  }
+
+  $("selected").replaceChildren();
+  const selected = talents.filter(t => levels[t.id] > 0);
+
+  if (!selected.length) {
+    const li = document.createElement("li");
+    li.textContent = "尚未選擇天賦";
+    $("selected").appendChild(li);
+  } else {
+    for (const t of selected) {
+      const li = document.createElement("li");
+      li.textContent =
+        `${t.id} ${t.name}：${levels[t.id]} / ${t.max} 點`;
+      $("selected").appendChild(li);
+    }
+  }
+  save();
+}
+
+for (const id of ["rank", "stage", "base", "paid"]) {
+  $(id).addEventListener("change", () => {
+    $("base").value = baseEnergy();
+    render();
+    if (usedEnergy() > totalEnergy()) {
+      notify("目前配置超出總能量；已保留配置，請手動調整。");
+    }
+  });
+}
+
+$("mode").addEventListener("change", () => {
+  const before = usedEnergy();
+  pruneInvalidTalents();
+  render();
+  const refunded = before - usedEnergy();
+  notify(refunded
+    ? `已切換前置規則，清除不符合條件的天賦並退回 ${refunded} 點。`
+    : "已切換前置解鎖規則。");
+});
+
+$("reset").addEventListener("click", () => {
+  if (!confirm("確定清空所有天賦？段位與能量設定會保留。")) return;
+  for (const t of talents) levels[t.id] = 0;
+  render();
+  notify("所有天賦已清空。");
+});
+
+$("export").addEventListener("click", async () => {
+  const selected = talents
+    .filter(t => levels[t.id] > 0)
+    .map(t => `${t.id} ${t.name}：${levels[t.id]}/${t.max}`);
+
+  const text = [
+    "守城聯機・天賦配置",
+    `段位：${ranks[Number($("rank").value)]} ${$("stage").value}`,
+    `基本能量：${baseEnergy()}`,
+    `真段位加成：${trueBonus()}`,
+    `付費加成：${$("paid").value}`,
+    `總能量：${totalEnergy()}`,
+    `已用：${usedEnergy()}，剩餘：${totalEnergy()-usedEnergy()}`,
+    `前置模式：${$("mode").value === "all" ? "全部" : "任一"}前置至少 1 點`,
+    "",
+    ...(selected.length ? selected : ["尚未選擇天賦"])
+  ].join("\n");
+
+  try {
+    await navigator.clipboard.writeText(text);
+    notify("配置已複製。");
+  } catch {
+    // 本機 HTML 可能沒有剪貼簿權限。
+    window.prompt("請長按或全選複製以下配置：", text);
+  }
+});
+
+restore();
+render();
+</script>
+</body>
+</html>
