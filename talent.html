@@ -221,11 +221,61 @@ button.danger {
   .panel { padding: 12px; }
   .controls { gap: 10px; }
 }
+.creator-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: fit-content;
+  margin: 4px auto 16px;
+  padding: 8px 16px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3b3020, #19283c);
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 4px 18px #0003;
+}
+.creator-icon {
+  font-size: 25px;
+}
+.creator-badge small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+.creator-footer {
+  margin-top: 24px;
+  padding: 20px 12px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.9;
+}
+.creator-signature {
+  margin-bottom: 4px;
+  color: var(--gold);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.creator-footer small {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+}
 </style>
 </head>
 <body>
 <main>
-  <h1>守城聯機・天賦模擬器</h1>
+  <div class="creator-badge">
+  <span>水豚製作 <small>CAPYBARA MADE</small></span>
+</div>
+<h1>守城聯機・天賦模擬器</h1>
   <div class="subtitle">短按加點 · 長按清空 · 自動儲存</div>
 
   <section class="panel controls">
@@ -317,7 +367,11 @@ button.danger {
     <ul id="selected"></ul>
   </section>
 </main>
-
+<footer class="creator-footer">
+  <div class="creator-signature">水豚製作・逼逼拉布</div>
+  <div>守城聯機・天賦模擬器 ｜ Made by 水豚</div>
+  <small>非官方模擬工具，遊戲數據以遊戲內實際內容為準。</small>
+</footer>
 <script>
 "use strict";
 
@@ -826,7 +880,8 @@ $("export").addEventListener("click", async () => {
     .map(t => `${t.id} ${t.name}：${levels[t.id]}/${t.max}`);
 
   const text = [
-    "守城聯機・天賦配置",
+  "守城聯機・天賦配置",
+  "製作：水豚 ｜ CAPYBARA MADE",
     `段位：${ranks[Number($("rank").value)]} ${$("stage").value}`,
     `初始能量：${baseEnergy()}`,
     `段位能量：${trueBonus()}`,
