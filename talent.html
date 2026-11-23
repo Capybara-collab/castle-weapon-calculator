@@ -712,6 +712,7 @@ function render() {
 for (const id of ["rank", "stage", "paid"]) {
   $(id).addEventListener("change", () => {
     render();
+
     if (usedEnergy() > totalEnergy()) {
       notify("目前配置超出總能量，請手動調整。");
     }
