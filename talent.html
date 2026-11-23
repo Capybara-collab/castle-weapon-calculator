@@ -282,12 +282,10 @@ button.danger {
     </div>
     <div id="energyInfo" class="summary"></div>
     <p class="note">
-      短按加 1 點；長按 0.6 秒清空並退點。
-      若後續天賦因此失去前置條件，會一併清空。
-      點數上限依提供資料設定；名稱與連線依原圖整理，
-      遊戲實際解鎖條件尚待確認。
-      各段位基本點數尚無公式，請自行輸入基本能量。
-      手機可左右滑動天賦圖。
+      短按加 1 點；長按 0.6 秒清空並退點
+      若後續天賦因此失去前置條件，會一併清空
+      點數上限依提供資料設定；名稱與連線依原圖整理
+      手機可左右滑動天賦圖
     </p>
   </section>
 
@@ -619,7 +617,6 @@ function save() {
     localStorage.setItem(storageKey, JSON.stringify({
       rank: $("rank").value,
       stage: $("stage").value,
-      base: baseEnergy(),
       paid: $("paid").value,
       mode: $("mode").value,
       levels
@@ -640,9 +637,6 @@ function restore() {
     }
     if (["I","II","III","IV","V"].includes(data.stage)) {
       $("stage").value = data.stage;
-    }
-    if (Number.isFinite(Number(data.base))) {
-      $("base").value = Math.max(0, Math.floor(Number(data.base)));
     }
     if (["0","10","20"].includes(String(data.paid))) {
       $("paid").value = String(data.paid);
@@ -675,9 +669,9 @@ function render() {
     remaining < 0 ? "#ff8888" : "var(--gold)";
 
   $("energyInfo").textContent =
-    `基本 ${baseEnergy()} ＋ 真段位 ${trueBonus()} ＋ ` +
-    `付費 ${Number($("paid").value)} ＝ 總能量 ${totalEnergy()}` +
-    (remaining < 0 ? "（已超額，請清除部分天賦或調整能量）" : "");
+  `初始能量 1 ＋ 段位能量 ${trueBonus()} ＋ ` +
+  `付費 ${Number($("paid").value)} ＝ 總能量 ${totalEnergy()}` +
+  (remaining < 0 ? "（已超額，請清除部分天賦或調整能量）" : "");
 
   for (const t of talents) {
     const button = buttons.get(t.id);
@@ -715,9 +709,14 @@ function render() {
   save();
 }
 
-for (const id of ["rank", "stage", "base", "paid"]) {
+for (const id of ["rank", "stage", "paid"]) {
   $(id).addEventListener("change", () => {
-    $("base").value = baseEnergy();
+    render();
+    if (usedEnergy() > totalEnergy()) {
+      notify("目前配置超出總能量，請手動調整。");
+    }
+  });
+}
     render();
     if (usedEnergy() > totalEnergy()) {
       notify("目前配置超出總能量；已保留配置，請手動調整。");
@@ -750,8 +749,8 @@ $("export").addEventListener("click", async () => {
   const text = [
     "守城聯機・天賦配置",
     `段位：${ranks[Number($("rank").value)]} ${$("stage").value}`,
-    `基本能量：${baseEnergy()}`,
-    `真段位加成：${trueBonus()}`,
+    `初始能量：1`,
+    `段位能量：${trueBonus()}`,
     `付費加成：${$("paid").value}`,
     `總能量：${totalEnergy()}`,
     `已用：${usedEnergy()}，剩餘：${totalEnergy()-usedEnergy()}`,
