@@ -240,10 +240,6 @@ button.danger {
       </select>
     </label>
     <label>
-      基本能量（不含真段位與付費加成）
-      <input id="base" type="number" min="0" step="1" value="0">
-    </label>
-    <label>
       付費能量
       <select id="paid">
         <option value="0">未購買（＋0）</option>
@@ -415,18 +411,20 @@ ranks.forEach((name, index) => {
 });
 
 function baseEnergy() {
-  const n = Number($("base").value);
-  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+  return 1;
 }
 
 function trueBonus() {
-  return Number($("rank").value) >= 20 ? 20 : 0;
+  const rankIndex = Number($("rank").value);
+  const stageIndex = ["I", "II", "III", "IV", "V"].indexOf($("stage").value);
+
+  return rankIndex * 5 + stageIndex +
+    (rankIndex >= 20 ? 20 : 0);
 }
 
 function totalEnergy() {
   return baseEnergy() + trueBonus() + Number($("paid").value);
 }
-
 function usedEnergy() {
   return Object.values(levels).reduce((sum, n) => sum + n, 0);
 }
