@@ -1,0 +1,183 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#071429">
+<title>水豚補給站｜守城聯機工具站</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  padding:30px 16px;
+  font-family:Arial,"Noto Sans TC",sans-serif;
+  background:#071429;
+  color:#f5f0df;
+}
+.container{max-width:760px;margin:auto}
+header{text-align:center;margin:35px 0}
+h1{color:#e8c879;font-size:32px}
+.subtitle{color:#aebbd0;line-height:1.7}
+.card{
+  background:#10233d;
+  border:1px solid #304663;
+  border-radius:16px;
+  padding:24px;
+  margin-bottom:20px;
+}
+h2{color:#e8c879;margin-top:0}
+.prices{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+.price{
+  padding:18px 10px;
+  border:1px solid #b9954e;
+  border-radius:12px;
+  background:#172f4d;
+  color:#f5e5bd;
+  font-size:17px;
+  cursor:pointer;
+}
+.price:hover,.price.active{
+  background:#b9954e;
+  color:#071429;
+}
+.qr{
+  margin-top:24px;
+  text-align:center;
+}
+.qr img{
+  width:100%;
+  max-width:300px;
+  border-radius:12px;
+  background:white;
+  padding:10px;
+}
+.note{color:#e8c879;line-height:1.7}
+.back{
+  display:inline-block;
+  margin-top:15px;
+  padding:12px 20px;
+  border-radius:10px;
+  background:#b9954e;
+  color:#071429;
+  text-decoration:none;
+  font-weight:bold;
+}
+footer{
+  text-align:center;
+  color:#8798ad;
+  margin-top:35px;
+  font-size:14px;
+}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <h1>❤️ 水豚補給站</h1>
+  <p class="subtitle">
+    喜歡這個工具網站嗎？<br>
+    歡迎請水豚喝杯奶茶，支持網站維護與更新！
+  </p>
+</header>
+
+<section class="card">
+  <h2>選擇支持金額</h2>
+  <p class="subtitle">點擊金額即可顯示對應的收款 QR Code，再點一次可以收起。</p>
+
+  <div class="prices">
+    <button class="price" type="button" data-amount="30">NT$30<br>洗鍊一次專武</button>
+    <button class="price" type="button" data-amount="50">NT$50<br>喝一次奶茶</button>
+    <button class="price" type="button" data-amount="100">NT$100<br>買份便當</button>
+    <button class="price" type="button" data-amount="200">NT$200<br>買個小禮包</button>
+  </div>
+
+  <div class="qr" id="qrArea" hidden>
+    <h2 id="qrTitle"></h2>
+    <img id="donateQr" alt="收款 QR Code" hidden>
+    <p class="note" id="donateText" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<div style="text-align:center">
+  <a class="back" href="index.html">返回首頁</a>
+</div>
+
+<footer>
+  感謝每一位支持水豚的朋友 ❤️
+  <p>本頁僅提供收款 QR Code 顯示，請自行確認收款資訊。</p>
+</footer>
+</div>
+
+<script>
+const donation = {
+  30:{
+    image:"https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/30.png",
+    message:"感謝你的支持！水豚又有一次洗鍊專武的機會了！"
+  },
+  50:{
+    image:"https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/50.png",
+    message:"感謝請水豚喝奶茶，今天也要努力更新網站！"
+  },
+  100:{
+    image:"https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/100.png",
+    message:"感謝你的便當贊助，水豚吃飽才有力氣繼續開發！"
+  },
+  200:{
+    image:"https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/200.png",
+    message:"感謝大力支持！這份心意讓水豚充滿繼續製作的動力！"
+  }
+};
+
+const buttons=document.querySelectorAll(".price");
+const qrArea=document.getElementById("qrArea");
+const qr=document.getElementById("donateQr");
+const qrTitle=document.getElementById("qrTitle");
+const donateText=document.getElementById("donateText");
+
+let selectedAmount=null;
+
+buttons.forEach(button=>{
+  button.addEventListener("click",()=>{
+    const amount=button.dataset.amount;
+
+    if(selectedAmount===amount){
+      selectedAmount=null;
+      qrArea.hidden=true;
+      qr.removeAttribute("src");
+      buttons.forEach(item=>item.classList.remove("active"));
+      return;
+    }
+
+    selectedAmount=amount;
+    buttons.forEach(item=>{
+      item.classList.toggle("active",item===button);
+    });
+
+    const info=donation[amount];
+    qrArea.hidden=false;
+    qr.hidden=true;
+    qrTitle.textContent="NT$"+amount+" 收款 QR Code";
+    donateText.textContent=info.message;
+
+    qr.onload=()=>{
+      qr.hidden=false;
+    };
+
+    qr.onerror=()=>{
+      qr.hidden=true;
+      donateText.textContent="付款 QR Code 載入失敗，請稍後再試；請勿在無法核對收款資訊時付款。";
+    };
+
+    qr.src=info.image;
+  });
+});
+</script>
+</body>
+</html>
+```
