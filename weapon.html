@@ -470,17 +470,6 @@
       margin: 8px 0;
     }
 
-    .youtube {
-      display: inline-block;
-      margin-top: 8px;
-      padding: 9px 16px;
-      border: 1px solid rgba(255, 255, 255, .1);
-      border-radius: 12px;
-      color: #ffd9df;
-      background: rgba(110, 24, 35, .6);
-      text-decoration: none;
-    }
-
     @media (max-width: 600px) {
       .container {
         width: calc(100% - 20px);
@@ -785,8 +774,6 @@
       <p>資料依提供的強化費用表建立｜支援 1 級至 30 級</p>
       <p>本工具依固定費用計算，不含未提供的折扣、成功率或其他額外消耗。</p>
       <p>© 2026 水豚 · All Rights Reserved.</p>
-      <a id="youtubeLink" class="youtube" target="_blank"
-         rel="noopener noreferrer" hidden>水豚的 YouTube 頻道</a>
     </footer>
 
     <noscript>
@@ -797,10 +784,6 @@
 
   <script>
     "use strict";
-
-    const SITE_CONFIG = {
-      youtubeUrl: "https://www.youtube.com/@Capybara_2007-CDO"
-    };
 
     // 第 1 筆代表 1 → 2 級，以此類推。
     const COST_DATA = [
@@ -1622,17 +1605,6 @@
     initLevels();
     bindEvents();
     resetAll();
-
-    if (SITE_CONFIG.youtubeUrl) {
-      try {
-        const url = new URL(SITE_CONFIG.youtubeUrl);
-
-        if (url.protocol === "https:") {
-          $("youtubeLink").href = url.href;
-          $("youtubeLink").hidden = false;
-        }
-      } catch {
-        // 未設定有效網址時不顯示連結。
       }
     }
   </script>
