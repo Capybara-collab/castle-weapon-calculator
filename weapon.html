@@ -1,1 +1,1569 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#071429" />
+  <meta name="description" content="守城專武強化計算器：計算逐級材料需求，依持有材料尋找最佳升級路線，並比較不同材料組合。" />
+  <title>守城專武強化計算器｜水豚</title>
 
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #030917;
+      --text: #f7f3ea;
+      --muted: #a7b6ce;
+      --gold: #f3cf85;
+      --gold-dark: #e9b24f;
+      --green: #8cf0bf;
+      --red: #ffb0b0;
+      --border: rgba(243, 207, 133, .15);
+      --radius: 22px;
+      --shadow: 0 18px 45px rgba(0, 0, 0, .28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at top, rgba(36, 97, 187, .25), transparent 48%),
+        linear-gradient(180deg, #071429, var(--bg));
+    }
+
+    button, input, select { font: inherit; }
+    button, select, input[type="radio"] { cursor: pointer; }
+    button { touch-action: manipulation; }
+    [hidden] { display: none !important; }
+
+    :focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: 4px;
+    }
+
+    .container {
+      width: min(980px, calc(100% - 28px));
+      margin: auto;
+      padding: 28px 0 36px;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 12px 0 10px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--gold);
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      line-height: 1.3;
+      font-weight: 900;
+      text-wrap: balance;
+    }
+
+    .hero p { color: var(--muted); }
+
+    .badge {
+      display: inline-block;
+      padding: 8px 18px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(243, 207, 133, .06);
+      color: #e9dcc0;
+      font-size: .9rem;
+    }
+
+    .card {
+      margin-top: 18px;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(160deg, rgba(18, 35, 66, .97), rgba(8, 20, 42, .97));
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 14px;
+      font-size: 1.25rem;
+    }
+
+    h2::before {
+      content: "";
+      width: 4px;
+      height: 22px;
+      flex-shrink: 0;
+      border-radius: 10px;
+      background: linear-gradient(var(--gold), var(--gold-dark));
+    }
+
+    h3 {
+      margin: 20px 0 10px;
+      font-size: 1rem;
+    }
+
+    .description, .note {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .description { margin: -4px 0 16px; }
+    .note { margin: 12px 0 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .field-label, legend {
+      display: block;
+      margin-bottom: 8px;
+      color: #d5dfef;
+      font-size: .93rem;
+      font-weight: 700;
+    }
+
+    .input {
+      width: 100%;
+      min-height: 54px;
+      padding: 12px 15px;
+      border: 1px solid rgba(108, 140, 197, .3);
+      border-radius: 13px;
+      color: var(--text);
+      background: #040e20;
+    }
+
+    .input:focus {
+      border-color: var(--gold);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(243, 207, 133, .12);
+    }
+
+    fieldset {
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .choice {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 84px;
+      padding: 14px;
+      border: 1px solid rgba(108, 140, 197, .22);
+      border-radius: 15px;
+      background: #050f20;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+
+    .choice:has(input:checked) {
+      border-color: var(--gold);
+      background: linear-gradient(135deg, rgba(91, 62, 21, .45), #101c31);
+    }
+
+    .choice input {
+      margin: 0;
+      accent-color: var(--gold);
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .choice strong, .choice small { display: block; }
+    .choice small { color: var(--muted); font-size: .8rem; }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 50px;
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: filter .15s, transform .15s;
+    }
+
+    .btn:hover:not(:disabled) {
+      filter: brightness(1.07);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .primary {
+      flex: 1;
+      color: #2f220d;
+      background: linear-gradient(90deg, #f7e6b8, var(--gold-dark));
+    }
+
+    .secondary {
+      color: white;
+      background: linear-gradient(#3b4c68, #2c3a52);
+    }
+
+    .message {
+      margin-top: 16px;
+      padding: 13px 15px;
+      border: 1px solid rgba(84, 210, 154, .2);
+      border-radius: 13px;
+      background: rgba(29, 88, 76, .2);
+      color: var(--green);
+      overflow-wrap: anywhere;
+    }
+
+    .message.error {
+      border-color: rgba(255, 123, 123, .28);
+      background: rgba(95, 32, 32, .25);
+      color: var(--red);
+    }
+
+    .message.neutral {
+      border-color: rgba(108, 140, 197, .2);
+      background: rgba(4, 14, 30, .55);
+      color: var(--muted);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      padding: 17px;
+      border: 1px solid rgba(120, 145, 190, .16);
+      border-radius: 16px;
+      background: linear-gradient(#07172f, #030d1e);
+    }
+
+    .stat-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .stat-value {
+      display: block;
+      color: var(--gold);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      line-height: 1.25;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid rgba(120, 145, 190, .14);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 440px;
+      border-collapse: collapse;
+      background: rgba(3, 12, 26, .6);
+      font-variant-numeric: tabular-nums;
+    }
+
+    th, td {
+      padding: 13px 15px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
+      font-size: .92rem;
+    }
+
+    th {
+      color: #cfd9ea;
+      background: rgba(22, 36, 66, .9);
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: rgba(255, 255, 255, .025); }
+    .numeric { text-align: right; }
+    .empty { text-align: center; color: var(--muted); }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 8px;
+      font-size: .8rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag.fragment { color: #ffe1a4; background: rgba(243, 207, 133, .12); }
+    .tag.crystal { color: #c8baff; background: rgba(150, 120, 255, .15); }
+    .tag.available { color: var(--green); background: rgba(84, 210, 154, .12); }
+    .tag.unavailable { color: var(--red); background: rgba(255, 123, 123, .1); }
+
+    .toolbar {
+      display: flex;
+      align-items: end;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 16px 0;
+    }
+
+    .toolbar .field { flex: 1; min-width: 180px; }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 54px;
+      color: #d5dfef;
+      cursor: pointer;
+      font-size: .9rem;
+    }
+
+    .check input { accent-color: var(--gold); width: 18px; height: 18px; }
+
+    .small-btn {
+      min-height: 36px;
+      padding: 7px 12px;
+      border: 1px solid rgba(243, 207, 133, .3);
+      border-radius: 9px;
+      background: rgba(243, 207, 133, .08);
+      color: var(--gold);
+      white-space: nowrap;
+    }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .pager span { color: var(--muted); font-size: .9rem; }
+
+    .plan-detail {
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(3, 12, 26, .45);
+    }
+
+    .detail-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .detail-heading h3 { margin: 0; }
+
+    .donate-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .donate-heading h2 { margin-bottom: 6px; }
+    .donate-heading p { margin: 0; }
+
+    .prices {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .price {
+      min-height: 50px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      background: #050f20;
+      font-weight: 800;
+    }
+
+    .price[aria-pressed="true"] {
+      color: #2f220d;
+      background: linear-gradient(90deg, #f7e6b8, var(--gold-dark));
+    }
+
+    .qr {
+      margin-top: 16px;
+      padding: 18px;
+      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #050f20;
+    }
+
+    .qr img {
+      display: block;
+      width: min(260px, 100%);
+      height: auto;
+      margin: 0 auto 14px;
+      padding: 10px;
+      border-radius: 12px;
+      background: white;
+    }
+
+    footer {
+      padding: 24px 0 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+
+    footer p { margin: 8px 0; }
+
+    .youtube {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 9px 16px;
+      border: 1px solid rgba(255, 255, 255, .1);
+      border-radius: 12px;
+      color: #ffd9df;
+      background: rgba(110, 24, 35, .6);
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      .container { width: calc(100% - 20px); padding-top: 18px; }
+      .card { padding: 16px; }
+      .grid, .choices { grid-template-columns: 1fr; }
+      .buttons { flex-direction: column; }
+      .buttons .btn { width: 100%; }
+      .stats { gap: 10px; }
+      .stat { padding: 13px; }
+      .prices { grid-template-columns: repeat(2, 1fr); }
+      .donate-heading { align-items: flex-start; }
+      .donate-heading .btn { padding: 10px 14px; flex-shrink: 0; }
+      th, td { padding: 12px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <header class="hero">
+      <h1>守城專武強化計算器</h1>
+      <p>新手製作網站 感謝巧克力果醬和飛天小女警贊助播出 贊助可以被放上來</p>
+      <span class="badge">Designed &amp; Developed by 水豚</span>
+      <div class="buttons" style="max-width: 500px; margin: 22px auto;">
+  <a href="talent.html" class="btn primary">
+    天賦模擬器
+  </a>
+</div>
+    </header>
+
+    <section class="card" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">強化設定</h2>
+
+      <div class="grid">
+        <div>
+          <label class="field-label" for="currentLevel">目前等級</label>
+          <select id="currentLevel" class="input"></select>
+        </div>
+
+        <div>
+          <label class="field-label" for="targetLevel">目標等級</label>
+          <select id="targetLevel" class="input"></select>
+        </div>
+
+        <fieldset class="full">
+          <legend>單一材料需求計算</legend>
+          <div class="choices">
+            <label class="choice">
+              <input type="radio" name="materialType" value="fragment" checked />
+              <span>
+                <strong>強化碎片（小石頭）</strong>
+                <small>計算全部使用碎片的需求</small>
+              </span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="materialType" value="crystal" />
+              <span>
+                <strong>黑水晶</strong>
+                <small>計算全部使用黑水晶的需求</small>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="buttons">
+        <button id="calculateBtn" class="btn primary" type="button">計算強化需求</button>
+        <button id="resetBtn" class="btn secondary" type="button">重設</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="resultTitle">
+      <h2 id="resultTitle">計算結果</h2>
+
+      <div id="calcMessage" class="message neutral" role="status" aria-live="polite">
+        選擇強化區間後，按下「計算強化需求」。
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">總共升級</span>
+          <span id="totalUpgrade" class="stat-value">—</span>
+        </div>
+        <div class="stat">
+          <span id="costLabel" class="stat-label">碎片總需求</span>
+          <span id="totalCost" class="stat-value">—</span>
+        </div>
+      </div>
+
+      <h3>逐級明細</h3>
+      <div class="table-wrap" tabindex="0" aria-label="逐級材料需求">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">升級區間</th>
+              <th scope="col">使用材料</th>
+              <th scope="col" class="numeric">消耗數量</th>
+            </tr>
+          </thead>
+          <tbody id="calcDetailBody">
+            <tr><td colspan="3" class="empty">尚未計算</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">每一級的碎片與黑水晶為二選一，不需要同時支付。</p>
+    </section>
+
+    <section class="card" aria-labelledby="routeTitle">
+      <h2 id="routeTitle">最佳材料分配策略</h2>
+      <p class="description">
+        依持有材料計算可行組合，在能完成目標的前提下，保留最多指定材料。
+      </p>
+
+      <div class="grid">
+        <div>
+          <label class="field-label" for="ownedFragments">目前小石頭（碎片）數量</label>
+          <input id="ownedFragments" class="input" type="number"
+                 min="0" step="1" inputmode="numeric" value="0" />
+        </div>
+        <div>
+          <label class="field-label" for="ownedCrystals">目前黑水晶數量</label>
+          <input id="ownedCrystals" class="input" type="number"
+                 min="0" step="1" inputmode="numeric" value="0" />
+        </div>
+
+        <fieldset class="full">
+          <legend>希望優先保留哪種材料？</legend>
+          <div class="choices">
+            <label class="choice">
+              <input type="radio" name="retainType" value="fragment" checked />
+              <span>
+                <strong>保留更多小石頭</strong>
+                <small>優先選擇碎片總消耗最少的可行方案</small>
+              </span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="retainType" value="crystal" />
+              <span>
+                <strong>保留更多黑水晶</strong>
+                <small>優先選擇黑水晶總消耗最少的可行方案</small>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="buttons">
+        <button id="routeBtn" class="btn primary" type="button">尋找最佳升級方式</button>
+      </div>
+
+      <div id="routeMessage" class="message neutral" role="status" aria-live="polite">
+        輸入材料數量後，按下「尋找最佳升級方式」。
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">方案執行後剩餘小石頭</span>
+          <span id="remainFragments" class="stat-value">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">方案執行後剩餘黑水晶</span>
+          <span id="remainCrystals" class="stat-value">—</span>
+        </div>
+      </div>
+
+      <h3 id="routeDetailTitle">建議升級路線</h3>
+      <div class="table-wrap" tabindex="0" aria-label="最佳升級路線">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">升級區間</th>
+              <th scope="col">建議使用材料</th>
+              <th scope="col" class="numeric">消耗數量</th>
+            </tr>
+          </thead>
+          <tbody id="bestRouteBody">
+            <tr><td colspan="3" class="empty">尚未計算</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">材料不足以達成目標時，會另外提供目前材料可達到的最高等級與對應路線。</p>
+    </section>
+
+    <section class="card" aria-labelledby="optimalTitle">
+      <h2 id="optimalTitle">整體最佳方案比較</h2>
+      <p class="description">
+        列出沒有被其他方案同時降低兩種材料消耗的選擇。相同總消耗僅顯示一條代表路線。
+      </p>
+
+      <div class="buttons">
+        <button id="optimalBtn" class="btn primary" type="button">開始比較最佳方案</button>
+      </div>
+
+      <div id="optimalMessage" class="message neutral" role="status" aria-live="polite">
+        請選擇強化等級後，開始比較。
+      </div>
+
+      <div id="optimalContent" hidden>
+        <div class="toolbar">
+          <div class="field">
+            <label class="field-label" for="planSort">方案排序</label>
+            <select id="planSort" class="input">
+              <option value="fragment">碎片消耗：少 → 多</option>
+              <option value="crystal">黑水晶消耗：少 → 多</option>
+            </select>
+          </div>
+          <label class="check">
+            <input id="onlyAffordable" type="checkbox" />
+            只顯示目前材料足夠的方案
+          </label>
+        </div>
+
+        <div class="table-wrap" tabindex="0" aria-label="最佳方案比較列表">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">方案</th>
+                <th scope="col" class="numeric">碎片消耗</th>
+                <th scope="col" class="numeric">黑水晶消耗</th>
+                <th scope="col">材料狀態</th>
+                <th scope="col">路線</th>
+              </tr>
+            </thead>
+            <tbody id="optimalPlansBody"></tbody>
+          </table>
+        </div>
+
+        <div id="planPager" class="pager">
+          <button id="prevPage" class="btn secondary" type="button">上一頁</button>
+          <span id="pageInfo"></span>
+          <button id="nextPage" class="btn secondary" type="button">下一頁</button>
+        </div>
+
+        <div id="planDetail" class="plan-detail" hidden>
+          <div class="detail-heading">
+            <h3 id="planDetailTitle">方案明細</h3>
+            <button id="closeDetail" class="small-btn" type="button">收合明細</button>
+          </div>
+          <p id="planDetailSummary" class="description"></p>
+          <div class="table-wrap" tabindex="0" aria-label="選定方案逐級明細">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">升級區間</th>
+                  <th scope="col">使用材料</th>
+                  <th scope="col" class="numeric">消耗數量</th>
+                </tr>
+              </thead>
+              <tbody id="planDetailBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="donateTitle">
+      <div class="donate-heading">
+        <div>
+          <h2 id="donateTitle">水豚補給站</h2>
+          <p class="description">喜歡這個工具，歡迎支持網站維護與更新。</p>
+        </div>
+        <button id="donateToggle" class="btn secondary" type="button"
+                aria-expanded="false" aria-controls="donatePanel">展開</button>
+      </div>
+
+      <div id="donatePanel" hidden>
+        <div class="prices" aria-label="支持金額">
+          <button class="price" type="button" data-amount="30" aria-pressed="false">NT$ 30</button>
+          <button class="price" type="button" data-amount="50" aria-pressed="false">NT$ 50</button>
+          <button class="price" type="button" data-amount="100" aria-pressed="false">NT$ 100</button>
+          <button class="price" type="button" data-amount="200" aria-pressed="false">NT$ 200</button>
+        </div>
+        <div id="qrArea" class="qr" hidden>
+          <img id="donateQr" alt="支持網站的付款 QR Code" hidden />
+          <p id="donateText" class="note" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>資料依提供的強化費用表建立｜支援 1 級至 30 級</p>
+      <p>本工具依固定費用計算，不含未提供的折扣、成功率或其他額外消耗。</p>
+      <p>© 2026 水豚 · All Rights Reserved.</p>
+      <a id="youtubeLink" class="youtube" target="_blank"
+         rel="noopener noreferrer" hidden>水豚的 YouTube 頻道</a>
+    </footer>
+
+    <noscript>
+      <div class="message error">請啟用 JavaScript，以使用強化計算功能。</div>
+    </noscript>
+  </main>
+
+  <script>
+    "use strict";
+
+    // 填入實際網址與付款 QR Code 圖片路徑。
+const SITE_CONFIG = {
+  youtubeUrl: "https://www.youtube.com/@Capybara_2007-CDO",
+  donationQr: {
+  30: "https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/30.png",
+  50: "https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/50.png",
+  100: "https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/100.png",
+  200: "https://raw.githubusercontent.com/Capybara-collab/castle-weapon-calculator/main/images/200.png"
+}
+};
+
+    // 第 1 筆代表 1 → 2 級，以此類推。
+    const COST_DATA = [
+      [800, 50],
+      [1100, 60],
+      [1300, 70],
+      [1600, 80],
+      [1900, 90],
+      [2100, 100],
+      [2400, 110],
+      [2700, 120],
+      [3000, 130],
+      [3200, 140],
+      [3800, 160],
+      [4300, 170],
+      [4900, 190],
+      [5400, 200],
+      [5900, 220],
+      [6500, 230],
+      [7000, 250],
+      [7600, 270],
+      [8100, 280],
+      [8500, 310],
+      [9500, 330],
+      [10400, 350],
+      [11300, 380],
+      [12200, 400],
+      [13100, 420],
+      [14000, 440],
+      [14900, 460],
+      [15800, 480],
+      [16700, 510]
+    ];
+
+    const MAX_LEVEL = COST_DATA.length + 1;
+    const PAGE_SIZE = 15;
+    const MAX_CACHE_SIZE = 12;
+    const formatter = new Intl.NumberFormat("zh-TW");
+    const format = value => formatter.format(value);
+    const $ = id => document.getElementById(id);
+
+    const state = {
+      cache: new Map(),
+      comparison: null,
+      page: 1,
+      visiblePlans: [],
+      donationAmount: null
+    };
+
+    const emptyRow = (columns, text = "尚未計算") =>
+      `<tr><td colspan="${columns}" class="empty">${text}</td></tr>`;
+
+    function setMessage(id, text, type = "neutral") {
+      const element = $(id);
+      element.textContent = text;
+      element.classList.toggle("error", type === "error");
+      element.classList.toggle("neutral", type === "neutral");
+    }
+
+    function getSelected(name) {
+      return document.querySelector(`input[name="${name}"]:checked`).value;
+    }
+
+    function readRange() {
+      const current = Number($("currentLevel").value);
+      const target = Number($("targetLevel").value);
+
+      if (
+        !Number.isInteger(current) ||
+        !Number.isInteger(target) ||
+        current < 1 ||
+        target > MAX_LEVEL ||
+        target <= current
+      ) {
+        throw new Error("目標等級必須高於目前等級，且位於費用表支援範圍內。");
+      }
+
+      const levels = [];
+
+      for (let level = current; level < target; level++) {
+        const data = COST_DATA[level - 1];
+
+        if (
+          !data ||
+          !Number.isSafeInteger(data[0]) ||
+          !Number.isSafeInteger(data[1]) ||
+          data[0] < 0 ||
+          data[1] < 0
+        ) {
+          throw new Error(`缺少 ${level} → ${level + 1} 級的有效材料資料。`);
+        }
+
+        levels.push({
+          level,
+          fragment: data[0],
+          crystal: data[1]
+        });
+      }
+
+      return { current, target, levels };
+    }
+
+    function readInventory() {
+      const fragmentInput = $("ownedFragments");
+      const crystalInput = $("ownedCrystals");
+
+      const fragments = fragmentInput.valueAsNumber;
+      const crystals = crystalInput.valueAsNumber;
+
+      if (
+        fragmentInput.value.trim() === "" ||
+        crystalInput.value.trim() === "" ||
+        !Number.isSafeInteger(fragments) ||
+        !Number.isSafeInteger(crystals) ||
+        fragments < 0 ||
+        crystals < 0
+      ) {
+        throw new Error("請輸入有效的非負整數材料數量。");
+      }
+
+      return { fragments, crystals };
+    }
+
+    function materialTag(type) {
+      const label = type === "fragment" ? "小石頭（碎片）" : "黑水晶";
+      return `<span class="tag ${type}">${label}</span>`;
+    }
+
+    function renderRoute(levels, route) {
+      return levels.map((item, index) => {
+        const type = route[index];
+
+        return `
+          <tr>
+            <td>${item.level} → ${item.level + 1} 級</td>
+            <td>${materialTag(type)}</td>
+            <td class="numeric">${format(item[type])}</td>
+          </tr>
+        `;
+      }).join("") || emptyRow(3, "不需要升級");
+    }
+
+    // 動態規劃：同碎片消耗只保留最低黑水晶消耗，
+    // 每輪再移除被其他方案全面超越的狀態。
+    function advanceFrontier(frontier, item) {
+      const candidates = new Map();
+
+      function save(plan) {
+        const old = candidates.get(plan.fragments);
+
+        if (!old || plan.crystals < old.crystals) {
+          candidates.set(plan.fragments, plan);
+        }
+      }
+
+      for (const plan of frontier) {
+        save({
+          fragments: plan.fragments + item.fragment,
+          crystals: plan.crystals,
+          previous: plan,
+          type: "fragment"
+        });
+
+        save({
+          fragments: plan.fragments,
+          crystals: plan.crystals + item.crystal,
+          previous: plan,
+          type: "crystal"
+        });
+      }
+
+      const sorted = [...candidates.values()]
+        .sort((a, b) => a.fragments - b.fragments);
+
+      const next = [];
+      let lowestCrystals = Infinity;
+
+      for (const plan of sorted) {
+        if (plan.crystals < lowestCrystals) {
+          next.push(plan);
+          lowestCrystals = plan.crystals;
+        }
+      }
+
+      return next;
+    }
+
+    function getOptimization(range) {
+      const key = `${range.current}:${range.target}`;
+
+      if (state.cache.has(key)) {
+        const cached = state.cache.get(key);
+        state.cache.delete(key);
+        state.cache.set(key, cached);
+        return cached;
+      }
+
+      const root = {
+        fragments: 0,
+        crystals: 0,
+        previous: null,
+        type: null
+      };
+
+      let frontier = [root];
+      const stages = [frontier];
+
+      for (const item of range.levels) {
+        frontier = advanceFrontier(frontier, item);
+        stages.push(frontier);
+      }
+
+      const result = { ...range, plans: frontier, stages };
+
+      state.cache.set(key, result);
+
+      if (state.cache.size > MAX_CACHE_SIZE) {
+        state.cache.delete(state.cache.keys().next().value);
+      }
+
+      return result;
+    }
+
+    function reconstructRoute(plan) {
+      const route = [];
+
+      while (plan && plan.previous) {
+        route.push(plan.type);
+        plan = plan.previous;
+      }
+
+      return route.reverse();
+    }
+
+    function isAffordable(plan, inventory) {
+      return (
+        plan.fragments <= inventory.fragments &&
+        plan.crystals <= inventory.crystals
+      );
+    }
+
+    function chooseBest(plans, inventory, retainType) {
+      let best = null;
+
+      for (const plan of plans) {
+        if (!isAffordable(plan, inventory)) continue;
+
+        if (!best) {
+          best = plan;
+          continue;
+        }
+
+        const primary = retainType === "fragment" ? "fragments" : "crystals";
+        const secondary = primary === "fragments" ? "crystals" : "fragments";
+
+        if (
+          plan[primary] < best[primary] ||
+          (plan[primary] === best[primary] && plan[secondary] < best[secondary])
+        ) {
+          best = plan;
+        }
+      }
+
+      return best;
+    }
+
+    function clearCalculation() {
+      $("totalUpgrade").textContent = "—";
+      $("totalCost").textContent = "—";
+      $("costLabel").textContent =
+        getSelected("materialType") === "fragment" ? "碎片總需求" : "黑水晶總需求";
+      $("calcDetailBody").innerHTML = emptyRow(3);
+    }
+
+    function clearRoute() {
+      $("remainFragments").textContent = "—";
+      $("remainCrystals").textContent = "—";
+      $("bestRouteBody").innerHTML = emptyRow(3);
+      $("routeDetailTitle").textContent = "建議升級路線";
+    }
+
+    function clearComparison() {
+      state.comparison = null;
+      state.page = 1;
+      state.visiblePlans = [];
+      $("optimalContent").hidden = true;
+      $("planDetail").hidden = true;
+      $("optimalPlansBody").innerHTML = "";
+      $("planDetailBody").innerHTML = "";
+    }
+
+    function calculateUpgrade() {
+      clearCalculation();
+
+      try {
+        const range = readRange();
+        const type = getSelected("materialType");
+        const sum = range.levels.reduce((total, item) => total + item[type], 0);
+
+        $("totalUpgrade").textContent = `${range.target - range.current} 級`;
+        $("totalCost").textContent = format(sum);
+        $("calcDetailBody").innerHTML = renderRoute(
+          range.levels,
+          range.levels.map(() => type)
+        );
+
+        setMessage(
+          "calcMessage",
+          `${range.current} 級 → ${range.target} 級，全部使用${type === "fragment" ? "碎片" : "黑水晶"}需 ${format(sum)} 個。`,
+          "success"
+        );
+      } catch (error) {
+        setMessage("calcMessage", error.message, "error");
+      }
+    }
+
+    function showRouteResult(optimization, plan, inventory, steps) {
+      const levels = optimization.levels.slice(0, steps);
+
+      $("remainFragments").textContent = format(inventory.fragments - plan.fragments);
+      $("remainCrystals").textContent = format(inventory.crystals - plan.crystals);
+      $("bestRouteBody").innerHTML = renderRoute(levels, reconstructRoute(plan));
+    }
+
+    function findBestRoute() {
+      clearRoute();
+
+      try {
+        const range = readRange();
+        const inventory = readInventory();
+        const retainType = getSelected("retainType");
+        const optimization = getOptimization(range);
+
+        const best = chooseBest(optimization.plans, inventory, retainType);
+        const preference = retainType === "fragment" ? "小石頭" : "黑水晶";
+
+        if (best) {
+          showRouteResult(optimization, best, inventory, range.levels.length);
+
+          setMessage(
+            "routeMessage",
+            `可達成 ${range.current} 級 → ${range.target} 級。已選出保留最多${preference}的可行方案：消耗碎片 ${format(best.fragments)} 個、黑水晶 ${format(best.crystals)} 個。`,
+            "success"
+          );
+
+          return;
+        }
+
+        let reachableSteps = 0;
+        let reachablePlan = optimization.stages[0][0];
+
+        for (let steps = 1; steps < optimization.stages.length; steps++) {
+          const plan = chooseBest(
+            optimization.stages[steps],
+            inventory,
+            retainType
+          );
+
+          if (!plan) break;
+
+          reachableSteps = steps;
+          reachablePlan = plan;
+        }
+
+        showRouteResult(
+          optimization,
+          reachablePlan,
+          inventory,
+          reachableSteps
+        );
+
+        const reachableLevel = range.current + reachableSteps;
+
+        $("routeDetailTitle").textContent =
+          reachableSteps > 0 ? "目前材料可達最高等級的路線" : "目前沒有可執行的升級路線";
+
+        setMessage(
+          "routeMessage",
+          reachableSteps > 0
+            ? `目前材料無法達成 ${range.target} 級；最高可升至 ${reachableLevel} 級。以下路線已在達到最高等級的前提下，保留最多${preference}。`
+            : `目前材料不足以完成 ${range.current} → ${range.current + 1} 級升級，材料尚未消耗。`,
+          "error"
+        );
+      } catch (error) {
+        setMessage("routeMessage", error.message, "error");
+      }
+    }
+
+
+    function calculateOptimalPlan() {
+      clearComparison();
+
+      try {
+        const range = readRange();
+        const comparison = getOptimization(range);
+
+        state.comparison = comparison;
+        state.page = 1;
+
+        $("optimalContent").hidden = false;
+
+        renderPlans();
+
+      } catch (error) {
+        clearComparison();
+        setMessage("optimalMessage", error.message, "error");
+      }
+    }
+
+
+    function renderPlans() {
+      if (!state.comparison) return;
+
+      const comparison = state.comparison;
+      let inventory = null;
+
+      try {
+        inventory = readInventory();
+      } catch {
+        // 未勾選材料篩選時，仍可比較不受庫存限制的方案。
+      }
+
+      $("planDetail").hidden = true;
+
+      if ($("onlyAffordable").checked && !inventory) {
+        $("optimalPlansBody").innerHTML = emptyRow(5, "請先輸入有效的材料數量");
+        $("planPager").hidden = true;
+        state.visiblePlans = [];
+
+        setMessage(
+          "optimalMessage",
+          "只顯示材料足夠的方案前，請先輸入有效的非負整數材料數量。",
+          "error"
+        );
+
+        return;
+      }
+
+      const affordableCount = inventory
+        ? comparison.plans.reduce(
+            (count, plan) => count + Number(isAffordable(plan, inventory)),
+            0
+          )
+        : null;
+
+      let plans = comparison.plans.map((plan, index) => ({
+        plan,
+        originalIndex: index
+      }));
+
+      if ($("onlyAffordable").checked) {
+        plans = plans.filter(({ plan }) => isAffordable(plan, inventory));
+      }
+
+      if ($("planSort").value === "crystal") {
+        plans.sort((a, b) =>
+          a.plan.crystals - b.plan.crystals ||
+          a.plan.fragments - b.plan.fragments
+        );
+      }
+
+      state.visiblePlans = plans;
+
+      const totalPages = Math.max(1, Math.ceil(plans.length / PAGE_SIZE));
+      state.page = Math.min(Math.max(1, state.page), totalPages);
+
+      const start = (state.page - 1) * PAGE_SIZE;
+      const pagePlans = plans.slice(start, start + PAGE_SIZE);
+
+      $("optimalPlansBody").innerHTML = pagePlans.map(({ plan, originalIndex }) => {
+        const status = inventory
+          ? isAffordable(plan, inventory)
+            ? '<span class="tag available">材料足夠</span>'
+            : '<span class="tag unavailable">材料不足</span>'
+          : '<span class="note">尚未確認</span>';
+
+        return `
+          <tr>
+            <td>${originalIndex + 1}</td>
+            <td class="numeric">${format(plan.fragments)}</td>
+            <td class="numeric">${format(plan.crystals)}</td>
+            <td>${status}</td>
+            <td>
+              <button class="small-btn" type="button"
+                      data-plan-index="${originalIndex}"
+                      aria-controls="planDetail">
+                查看明細
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("") || emptyRow(5, "目前沒有材料足夠的方案");
+
+      $("planPager").hidden = plans.length <= PAGE_SIZE;
+      $("prevPage").disabled = state.page <= 1;
+      $("nextPage").disabled = state.page >= totalPages;
+      $("pageInfo").textContent =
+        `第 ${state.page} / ${totalPages} 頁 · ${format(plans.length)} 個方案`;
+
+      const stockSummary = inventory
+        ? `其中 ${format(affordableCount)} 種可由目前材料完成。`
+        : "輸入有效材料數量後，可確認哪些方案能執行。";
+
+      setMessage(
+        "optimalMessage",
+        `${comparison.current} 級 → ${comparison.target} 級：共 ${format(comparison.plans.length)} 種未被全面超越的材料組合。${stockSummary}`,
+        "success"
+      );
+    }
+
+    function showPlanDetail(index) {
+      const comparison = state.comparison;
+      const plan = comparison?.plans[index];
+
+      if (!plan) return;
+
+      $("planDetailTitle").textContent = `方案 ${index + 1} · 逐級明細`;
+      $("planDetailSummary").textContent =
+        `碎片總消耗 ${format(plan.fragments)} 個 · 黑水晶總消耗 ${format(plan.crystals)} 個`;
+
+      $("planDetailBody").innerHTML = renderRoute(
+        comparison.levels,
+        reconstructRoute(plan)
+      );
+
+      $("planDetail").hidden = false;
+
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      $("planDetail").scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "nearest"
+      });
+    }
+
+    function initLevels() {
+      const currentFragment = document.createDocumentFragment();
+      const targetFragment = document.createDocumentFragment();
+
+      for (let level = 1; level <= MAX_LEVEL; level++) {
+        currentFragment.appendChild(new Option(`${level} 級`, String(level)));
+        targetFragment.appendChild(new Option(`${level} 級`, String(level)));
+      }
+
+      $("currentLevel").replaceChildren(currentFragment);
+      $("targetLevel").replaceChildren(targetFragment);
+    }
+
+    function syncTargetOptions(adjustSelection = true) {
+      const current = Number($("currentLevel").value);
+
+      for (const option of $("targetLevel").options) {
+        option.disabled = Number(option.value) <= current;
+      }
+
+      if (
+        adjustSelection &&
+        Number($("targetLevel").value) <= current &&
+        current < MAX_LEVEL
+      ) {
+        $("targetLevel").value = String(current + 1);
+      }
+    }
+
+    function handleRangeChange() {
+      syncTargetOptions();
+
+      clearCalculation();
+      clearRoute();
+      clearComparison();
+
+      const isMaximum = Number($("currentLevel").value) === MAX_LEVEL;
+
+      for (const id of ["calculateBtn", "routeBtn", "optimalBtn"]) {
+        $(id).disabled = isMaximum;
+      }
+
+      const text = isMaximum
+        ? "目前已達費用表支援的最高等級，沒有更高等級可計算。"
+        : "強化區間已變更，請重新計算。";
+
+      setMessage("calcMessage", text);
+      setMessage("routeMessage", text);
+      setMessage("optimalMessage", text);
+    }
+
+    function handleInventoryChange() {
+      clearRoute();
+      setMessage("routeMessage", "材料數量已變更，請重新尋找最佳升級方式。");
+
+      if (state.comparison) {
+        state.page = 1;
+        renderPlans();
+      }
+    }
+
+    function toggleDonate() {
+      const expanded = $("donatePanel").hidden;
+
+      $("donatePanel").hidden = !expanded;
+      $("donateToggle").textContent = expanded ? "收合" : "展開";
+      $("donateToggle").setAttribute("aria-expanded", String(expanded));
+    }
+
+   
+function selectDonateAmount(button) {
+  const amount = Number(button.dataset.amount);
+
+  // 如果再次點擊相同金額，就收起 QR Code
+  if (state.donationAmount === amount) {
+    state.donationAmount = null;
+
+    document.querySelectorAll(".price").forEach(element => {
+      element.setAttribute("aria-pressed", "false");
+    });
+
+    $("qrArea").hidden = true;
+    $("donateQr").hidden = true;
+    $("donateQr").removeAttribute("src");
+    $("donateText").textContent = "";
+
+    return;
+  }
+
+  state.donationAmount = amount;
+
+  document.querySelectorAll(".price").forEach(element => {
+    element.setAttribute("aria-pressed", String(element === button));
+  });
+
+  const image = $("donateQr");
+  const source = SITE_CONFIG.donationQr[amount];
+
+  $("qrArea").hidden = false;
+  image.hidden = true;
+  image.removeAttribute("src");
+
+  if (!source) {
+    $("donateText").textContent =
+      `已選擇 NT$ ${format(amount)}。此方案尚未設定付款 QR Code，目前無法透過本頁付款。`;
+    return;
+  }
+
+  image.alt = `NT$ ${amount} 支持方案付款 QR Code`;
+  image.src = source;
+
+  
+const thankYouMessages = {
+  30: "感謝你的支持！水豚又有一次洗鍊專武的機會了！",
+  50: "感謝請水豚喝奶茶，今天也要努力更新網站！",
+  100: "感謝你的便當贊助，水豚吃飽才有力氣繼續開發！",
+  200: "感謝大力支持！這份心意讓水豚充滿繼續製作的動力！"
+};
+
+$("donateText").textContent =
+  `支持金額：NT$ ${format(amount)}。${thankYouMessages[amount]}`;
+}
+    function resetAll() {
+      $("currentLevel").value = "1";
+      $("targetLevel").value = String(Math.min(5, MAX_LEVEL));
+
+      document.querySelector('input[name="materialType"][value="fragment"]').checked = true;
+      document.querySelector('input[name="retainType"][value="fragment"]').checked = true;
+
+      $("ownedFragments").value = "0";
+      $("ownedCrystals").value = "0";
+      $("planSort").value = "fragment";
+      $("onlyAffordable").checked = false;
+
+      syncTargetOptions(false);
+      clearCalculation();
+      clearRoute();
+      clearComparison();
+
+      for (const id of ["calculateBtn", "routeBtn", "optimalBtn"]) {
+        $(id).disabled = false;
+      }
+
+      setMessage("calcMessage", "選擇強化區間後，按下「計算強化需求」。");
+      setMessage("routeMessage", "輸入材料數量後，按下「尋找最佳升級方式」。");
+      setMessage("optimalMessage", "請選擇強化等級後，開始比較。");
+
+      $("donatePanel").hidden = true;
+      $("donateToggle").textContent = "展開";
+      $("donateToggle").setAttribute("aria-expanded", "false");
+      $("qrArea").hidden = true;
+      $("donateQr").hidden = true;
+      $("donateQr").removeAttribute("src");
+      $("donateText").textContent = "";
+      state.donationAmount = null;
+
+      document.querySelectorAll(".price").forEach(button => {
+        button.setAttribute("aria-pressed", "false");
+      });
+    }
+
+    function bindEvents() {
+      $("calculateBtn").addEventListener("click", calculateUpgrade);
+      $("routeBtn").addEventListener("click", findBestRoute);
+      $("optimalBtn").addEventListener("click", calculateOptimalPlan);
+      $("resetBtn").addEventListener("click", resetAll);
+
+      $("currentLevel").addEventListener("change", handleRangeChange);
+      $("targetLevel").addEventListener("change", handleRangeChange);
+
+      document.querySelectorAll('input[name="materialType"]').forEach(input => {
+        input.addEventListener("change", () => {
+          clearCalculation();
+          setMessage("calcMessage", "計算材料已變更，請重新計算。");
+        });
+      });
+
+      document.querySelectorAll('input[name="retainType"]').forEach(input => {
+        input.addEventListener("change", () => {
+          clearRoute();
+          setMessage("routeMessage", "保留偏好已變更，請重新尋找最佳升級方式。");
+        });
+      });
+
+      $("ownedFragments").addEventListener("input", handleInventoryChange);
+      $("ownedCrystals").addEventListener("input", handleInventoryChange);
+
+      $("planSort").addEventListener("change", () => {
+        state.page = 1;
+        renderPlans();
+      });
+
+      $("onlyAffordable").addEventListener("change", () => {
+        state.page = 1;
+        renderPlans();
+      });
+
+      $("prevPage").addEventListener("click", () => {
+        state.page--;
+        renderPlans();
+      });
+
+      $("nextPage").addEventListener("click", () => {
+        state.page++;
+        renderPlans();
+      });
+
+      $("optimalPlansBody").addEventListener("click", event => {
+        const button = event.target.closest("button[data-plan-index]");
+
+        if (button) {
+          showPlanDetail(Number(button.dataset.planIndex));
+        }
+      });
+
+      $("closeDetail").addEventListener("click", () => {
+        $("planDetail").hidden = true;
+      });
+
+      $("donateToggle").addEventListener("click", toggleDonate);
+
+      document.querySelectorAll(".price").forEach(button => {
+        button.addEventListener("click", () => selectDonateAmount(button));
+      });
+
+   $("donateQr").addEventListener("load", () => {
+  if (
+    state.donationAmount !== null &&
+    $("qrArea").hidden === false &&
+    $("donateQr").getAttribute("src")
+  ) {
+    $("donateQr").hidden = false;
+  }
+});
+      $("donateQr").addEventListener("error", () => {
+        $("donateQr").hidden = true;
+
+        if (state.donationAmount !== null) {
+          $("donateText").textContent =
+            "付款 QR Code 載入失敗，請稍後再試；請勿在無法核對收款資訊時付款。";
+        }
+      });
+    }
+
+    initLevels();
+    bindEvents();
+    resetAll();
+
+    if (SITE_CONFIG.youtubeUrl) {
+      try {
+        const url = new URL(SITE_CONFIG.youtubeUrl);
+
+        if (url.protocol === "https:") {
+          $("youtubeLink").href = url.href;
+          $("youtubeLink").hidden = false;
+        }
+      } catch {
+        // 未設定有效網址時不顯示連結。
+      }
+    }
+  </script>
+</body>
+</html>
